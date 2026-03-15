@@ -20,6 +20,7 @@ type MewTranslations = {
   splashMusicOff: string
   splashMusicVolume: string
   splashMuted: string
+  backToSplash: string
   signIn: string
   signUp: string
   createAccount: string
@@ -158,6 +159,7 @@ const translations: Record<MewLanguage, MewTranslations> = {
     splashMusicOff: "Music Off",
     splashMusicVolume: "Music volume",
     splashMuted: "Muted",
+    backToSplash: "Back to splash",
     signIn: "Sign In",
     signUp: "Sign Up",
     createAccount: "Create account",
@@ -294,6 +296,7 @@ const translations: Record<MewLanguage, MewTranslations> = {
     splashMusicOff: "Музыка выкл",
     splashMusicVolume: "Громкость",
     splashMuted: "Без звука",
+    backToSplash: "Вернуться к заставке",
     signIn: "Войти",
     signUp: "Регистрация",
     createAccount: "Создать аккаунт",

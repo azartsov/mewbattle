@@ -14,7 +14,7 @@ interface PreAuthUkiyoeSplashProps {
 
 const MUSIC_VOLUME_STORAGE_KEY = "mewbattleSplashMusicVolume"
 const DEFAULT_SPLASH_VOLUME = 68
-const MAX_MASTER_GAIN = 0.11
+const MAX_MASTER_GAIN = 0.22
 
 const PETALS = Array.from({ length: 22 }, (_, i) => ({
   id: i,
@@ -201,6 +201,29 @@ export function PreAuthUkiyoeSplash({ onEnter }: PreAuthUkiyoeSplashProps) {
           100% { opacity: 0; transform: translateY(105vh) rotate(660deg) translateX(var(--petal-drift)); }
         }
         .splash-petal { animation: petalFall var(--petal-dur) var(--petal-delay) ease-in infinite; }
+        @keyframes sakura-title-glow {
+          0%, 100% { filter: drop-shadow(0 0 10px rgba(251, 191, 221, 0.36)); }
+          50% { filter: drop-shadow(0 0 16px rgba(244, 114, 182, 0.52)); }
+        }
+        .sakura-title {
+          background-image:
+            radial-gradient(circle at 14% 22%, rgba(255, 236, 245, 0.96) 0 16%, transparent 17%),
+            radial-gradient(circle at 34% 72%, rgba(251, 191, 221, 0.92) 0 16%, transparent 17%),
+            radial-gradient(circle at 58% 30%, rgba(244, 114, 182, 0.9) 0 15%, transparent 16%),
+            radial-gradient(circle at 76% 64%, rgba(251, 207, 232, 0.9) 0 15%, transparent 16%),
+            linear-gradient(120deg, rgba(255, 242, 248, 0.96), rgba(251, 207, 232, 0.9));
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+          font-family: "Hiragino Mincho ProN", "Yu Mincho", "MS Mincho", serif;
+          font-weight: 700;
+          letter-spacing: 0.12em;
+          text-shadow:
+            0 1px 0 rgba(17, 24, 39, 0.62),
+            0 2px 6px rgba(17, 24, 39, 0.38),
+            0 0 1px rgba(255, 255, 255, 0.55);
+          animation: sakura-title-glow 2.3s ease-in-out infinite;
+        }
       `}</style>
 
       {/* Night sky */}
@@ -243,6 +266,18 @@ export function PreAuthUkiyoeSplash({ onEnter }: PreAuthUkiyoeSplashProps) {
 
       {/* Bottom fade */}
       <div className="absolute inset-x-0 bottom-0 h-[52%] bg-[linear-gradient(180deg,transparent_0%,rgba(12,9,32,0.8)_52%,rgba(5,4,15,0.97)_100%)]" />
+
+      {/* Center logo from sakura petals */}
+      <div className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center px-4">
+        <div className="text-center">
+          <h2 className="sakura-title select-none text-4xl uppercase sm:text-6xl md:text-7xl">
+            ＭＥＷＢＡＴＴＬＥ
+          </h2>
+          <p className="mt-1 text-sm font-semibold tracking-[0.12em] text-amber-100/90 sm:text-base">
+            {t.appSubtitle}
+          </p>
+        </div>
+      </div>
 
       {/* Falling petals */}
       {PETALS.map((p) => (
@@ -308,10 +343,10 @@ export function PreAuthUkiyoeSplash({ onEnter }: PreAuthUkiyoeSplashProps) {
         </div>
       </div>
 
-      {/* Language and music controls */}
-      <div className="absolute right-4 top-4 z-10 flex flex-col items-end gap-2">
-        <div className="w-[180px] rounded-xl border border-amber-200/30 bg-black/45 px-2.5 py-2 backdrop-blur-[2px]">
-          <div className="mb-1 flex items-center justify-between text-[11px] text-amber-100">
+      {/* Music control */}
+      <div className="absolute left-4 top-4 z-10">
+        <div className="w-[146px] rounded-lg border border-amber-200/30 bg-black/45 px-2 py-1.5 backdrop-blur-[2px]">
+          <div className="mb-1 flex items-center justify-between text-[10px] text-amber-100">
             <span>{t.splashMusicVolume}</span>
             <span>{musicVolume === 0 ? t.splashMuted : `${musicVolume}%`}</span>
           </div>
@@ -322,10 +357,14 @@ export function PreAuthUkiyoeSplash({ onEnter }: PreAuthUkiyoeSplashProps) {
             step={1}
             value={musicVolume}
             onChange={(event) => handleVolumeChange(Number(event.target.value))}
-            className="h-1.5 w-full accent-amber-400"
+            className="h-1 w-full accent-amber-400"
             aria-label={t.splashMusicVolume}
           />
         </div>
+      </div>
+
+      {/* Language control */}
+      <div className="absolute right-4 top-4 z-10">
         <LanguageToggle />
       </div>
 

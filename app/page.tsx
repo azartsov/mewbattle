@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Image from "next/image"
-import { BookOpen, CircleHelp, Crown, Gem, Gift, LogOut, MoreVertical, PawPrint, Play, RotateCcw, Shield, Sparkles, Swords, TrendingUp, Trophy } from "lucide-react"
+import { BookOpen, CircleHelp, Crown, Gem, Gift, LogOut, MoreVertical, PawPrint, Play, RotateCcw, Shield, Sparkles, Swords, TrendingUp, Trophy, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -87,7 +87,12 @@ function AuthScreen() {
             <h1 className="text-2xl font-bold">{t.appTitle}</h1>
             <p className="text-sm text-muted-foreground">{t.appSubtitle}</p>
           </div>
-          <LanguageToggle />
+          <div className="flex items-center gap-1">
+            <LanguageToggle />
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowForm(false)} aria-label={t.backToSplash}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         <form className="space-y-2" onSubmit={submit}>
           <Input type="email" placeholder={t.email} value={email} onChange={(e) => setEmail(e.target.value)} />
