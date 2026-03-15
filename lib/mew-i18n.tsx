@@ -398,7 +398,7 @@ const translations: Record<MewLanguage, MewTranslations> = {
     bankruptcyWarning: "Недостаточно монет для боя и нечего продавать. Сбросьте прогресс, чтобы начать заново.",
     bankruptcyReset: "Начать заново",
     nickname: "Ник",
-    leaderboard: "Лидерборд",
+    leaderboard: "Топ игроков",
     leaderboardTitle: "Топ игроков",
     leaderboardEmpty: "В таблице пока нет игроков.",
     lbColNickname: "Игрок",
