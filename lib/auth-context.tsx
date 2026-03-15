@@ -9,6 +9,7 @@ import {
   type User,
 } from "firebase/auth"
 import { auth } from "./firebase"
+import { saveUserNickname } from "./mew-firestore"
 
 interface AuthContextType {
   user: User | null
@@ -16,7 +17,7 @@ interface AuthContextType {
   loading: boolean
   error: string | null
   signIn: (email: string, password: string) => Promise<void>
-  signUp: (email: string, password: string) => Promise<void>
+  signUp: (email: string, password: string, nickname?: string) => Promise<void>
   signOut: () => Promise<void>
   enterGuestMode: () => void
   clearError: () => void
@@ -69,10 +70,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const signUp = useCallback(async (email: string, password: string) => {
+  const signUp = useCallback(async (email: string, password: string, nickname?: string) => {
     setError(null)
     try {
-      await createUserWithEmailAndPassword(auth, email, password)
+      const cred = await createUserWithEmailAndPassword(auth, email, password)
+      if (nickname?.trim()) {
+        await saveUserNickname(cred.user.uid, nickname.trim())
+      }
     } catch (e: unknown) {
       const fe = e as { code?: string; message?: string }
       const msg = mapFirebaseError(fe.code || "", fe.message || "Sign up failed")

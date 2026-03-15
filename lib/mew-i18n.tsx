@@ -12,6 +12,14 @@ type MewTranslations = {
   boosters: string
   battle: string
   help: string
+  splashTitle: string
+  splashSubtitle: string
+  splashHint: string
+  splashEnter: string
+  splashMusicOn: string
+  splashMusicOff: string
+  splashMusicVolume: string
+  splashMuted: string
   signIn: string
   signUp: string
   createAccount: string
@@ -101,6 +109,34 @@ type MewTranslations = {
   helpStatHp: string
   helpStatOwned: string
   helpStatRarity: string
+  details: string
+  characterLore: string
+  paramList: string
+  paramAttackDesc: string
+  paramHealthDesc: string
+  paramRarityDesc: string
+  paramAbilityDesc: string
+  paramAffinityDesc: string
+  noAffinity: string
+  bossType: string
+  bossRaven: string
+  bossDog: string
+  bossRat: string
+  resetToInitial: string
+  resetConfirmTitle: string
+  resetConfirmDesc: string
+  bankruptcyWarning: string
+  bankruptcyReset: string
+  nickname: string
+  leaderboard: string
+  leaderboardTitle: string
+  leaderboardEmpty: string
+  lbColNickname: string
+  lbColScore: string
+  lbColCards: string
+  lbColDate: string
+  rewardInverseTip: string
+  logout: string
 }
 
 const translations: Record<MewLanguage, MewTranslations> = {
@@ -112,6 +148,14 @@ const translations: Record<MewLanguage, MewTranslations> = {
     boosters: "Boosters",
     battle: "Battle",
     help: "Help",
+    splashTitle: "Dawn Over Edo Arena",
+    splashSubtitle: "Cats gather before the duel under ukiyo-e skies.",
+    splashHint: "Tap to open entry",
+    splashEnter: "Enter",
+    splashMusicOn: "Music On",
+    splashMusicOff: "Music Off",
+    splashMusicVolume: "Music volume",
+    splashMuted: "Muted",
     signIn: "Sign In",
     signUp: "Sign Up",
     createAccount: "Create account",
@@ -201,6 +245,34 @@ const translations: Record<MewLanguage, MewTranslations> = {
     helpStatHp: "HP: health points. When HP reaches 0, the fighter is defeated.",
     helpStatOwned: "x1, x2, ...: how many copies of this card you own.",
     helpStatRarity: "Rarity (COMMON / RARE / EPIC / LEGENDARY): affects drop chance and sell value.",
+    details: "Details",
+    characterLore: "Legend",
+    paramList: "Parameters",
+    paramAttackDesc: "ATK: base damage dealt per successful attack.",
+    paramHealthDesc: "HP: maximum health before defeat.",
+    paramRarityDesc: "Rarity: influences drop chances and economy value.",
+    paramAbilityDesc: "Ability: core passive trait used during combat rolls.",
+    paramAffinityDesc: "Mastery: bonus damage against specific boss types.",
+    noAffinity: "No special mastery yet.",
+    bossType: "Boss type",
+    bossRaven: "Raven",
+    bossDog: "Dog",
+    bossRat: "Rat",
+    resetToInitial: "Reset Progress",
+    resetConfirmTitle: "Reset to Initial State?",
+    resetConfirmDesc: "Your cards, decks and stats will be erased. You will start fresh with 3 cards and 500 coins.",
+    bankruptcyWarning: "Not enough coins to start a battle and nothing left to sell. Reset your progress to begin again.",
+    bankruptcyReset: "Start Over",
+    nickname: "Nickname",
+    leaderboard: "Leaderboard",
+    leaderboardTitle: "Top Players",
+    leaderboardEmpty: "No players on the leaderboard yet.",
+    lbColNickname: "Player",
+    lbColScore: "Earned",
+    lbColCards: "Cards",
+    lbColDate: "Date",
+    rewardInverseTip: "Weaker deck -> higher reward (inversely proportional to deck strength)",
+    logout: "Logout",
   },
   ru: {
     appTitle: "MewBattle",
@@ -210,6 +282,14 @@ const translations: Record<MewLanguage, MewTranslations> = {
     boosters: "Бустеры",
     battle: "Бой",
     help: "Помощь",
+    splashTitle: "Рассвет над ареной Эдо",
+    splashSubtitle: "Коты собираются перед дуэлью под небом в стиле укиё-э.",
+    splashHint: "Нажмите, чтобы открыть вход",
+    splashEnter: "Войти",
+    splashMusicOn: "Музыка вкл",
+    splashMusicOff: "Музыка выкл",
+    splashMusicVolume: "Громкость",
+    splashMuted: "Без звука",
     signIn: "Войти",
     signUp: "Регистрация",
     createAccount: "Создать аккаунт",
@@ -299,6 +379,34 @@ const translations: Record<MewLanguage, MewTranslations> = {
     helpStatHp: "HP: очки здоровья. При 0 HP боец выбывает.",
     helpStatOwned: "x1, x2, ...: количество копий карты в вашей коллекции.",
     helpStatRarity: "Редкость (COMMON / RARE / EPIC / LEGENDARY): влияет на шанс выпадения и цену продажи.",
+    details: "Подробнее",
+    characterLore: "Легенда",
+    paramList: "Параметры",
+    paramAttackDesc: "ATK: базовый урон за успешную атаку.",
+    paramHealthDesc: "HP: максимальный запас здоровья до поражения.",
+    paramRarityDesc: "Редкость: влияет на шансы выпадения и ценность в экономике.",
+    paramAbilityDesc: "Умение: ключевая пассивная особенность в бою.",
+    paramAffinityDesc: "Специализация: бонусный урон по конкретным типам боссов.",
+    noAffinity: "Пока нет особой специализации.",
+    bossType: "Тип босса",
+    bossRaven: "Ворон",
+    bossDog: "Пес",
+    bossRat: "Крыса",
+    resetToInitial: "Сбросить прогресс",
+    resetConfirmTitle: "Сбросить до начального состояния?",
+    resetConfirmDesc: "Карты, колоды и статистика будут удалены. Вы начнете заново с 3 картами и 500 монетами.",
+    bankruptcyWarning: "Недостаточно монет для боя и нечего продавать. Сбросьте прогресс, чтобы начать заново.",
+    bankruptcyReset: "Начать заново",
+    nickname: "Ник",
+    leaderboard: "Лидерборд",
+    leaderboardTitle: "Топ игроков",
+    leaderboardEmpty: "В таблице пока нет игроков.",
+    lbColNickname: "Игрок",
+    lbColScore: "Заработано",
+    lbColCards: "Карты",
+    lbColDate: "Дата",
+    rewardInverseTip: "Слабее колода -> выше награда (обратно пропорционально силе)",
+    logout: "Выйти",
   },
 }
 

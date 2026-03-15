@@ -8,11 +8,10 @@ import { MewCardFace } from "@/components/mew/mew-card-face"
 import { useMewI18n } from "@/lib/mew-i18n"
 import type { DeckSlotKey } from "@/lib/mew-firestore"
 
-const MAX_DECK_SIZE = 5
-
 interface DeckBuilderProps {
   cards: MewCard[]
   userCards: UserCard[]
+  maxDeckSize: number
   deckButtons: Array<{ slot: DeckSlotKey; label: string }>
   selectedDeckSlot: DeckSlotKey
   initialDeckName: string
@@ -24,6 +23,7 @@ interface DeckBuilderProps {
 export function DeckBuilder({
   cards,
   userCards,
+  maxDeckSize,
   deckButtons,
   selectedDeckSlot,
   initialDeckName,
@@ -33,15 +33,28 @@ export function DeckBuilder({
 }: DeckBuilderProps) {
   const { t } = useMewI18n()
   const [deckName, setDeckName] = useState(initialDeckName)
-  const [deck, setDeck] = useState<string[]>(initialDeckCardIds.slice(0, MAX_DECK_SIZE))
+  const [deck, setDeck] = useState<string[]>(initialDeckCardIds.slice(0, maxDeckSize))
   const [saving, setSaving] = useState(false)
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
 
   useEffect(() => {
+    const ownedById = new Map(userCards.map((card) => [card.cardId, card.quantity]))
+    const usedById = new Map<string, number>()
+    const safeCards: string[] = []
+
+    for (const cardId of initialDeckCardIds) {
+      const ownedQty = ownedById.get(cardId) ?? 0
+      if (ownedQty <= 0) continue
+      const usedQty = usedById.get(cardId) ?? 0
+      if (usedQty >= ownedQty) continue
+      usedById.set(cardId, usedQty + 1)
+      safeCards.push(cardId)
+    }
+
     setDeckName(initialDeckName)
-    setDeck(initialDeckCardIds.slice(0, MAX_DECK_SIZE))
+    setDeck(safeCards.slice(0, maxDeckSize))
     setSelectedCardId(null)
-  }, [initialDeckCardIds, initialDeckName])
+  }, [initialDeckCardIds, initialDeckName, maxDeckSize, userCards])
 
   const ownedCardsById = useMemo(() => new Map(userCards.map((c) => [c.cardId, c.quantity])), [userCards])
   const ownedCardIds = useMemo(() => new Set(userCards.filter((c) => c.quantity > 0).map((c) => c.cardId)), [userCards])
@@ -51,21 +64,26 @@ export function DeckBuilder({
     event.preventDefault()
     const cardId = event.dataTransfer.getData("text/plain")
     if (!cardId) return
-
+    const maxQty = ownedCardsById.get(cardId) ?? 0
     setDeck((prev) => {
       const next = [...prev]
+      const usedElsewhere = next.filter((id, i) => id === cardId && i !== slotIndex).length
+      if (usedElsewhere >= maxQty) return prev
       next[slotIndex] = cardId
-      return next.slice(0, MAX_DECK_SIZE)
+      return next.slice(0, maxDeckSize)
     })
   }
 
   const handleTapSlot = (slotIndex: number) => {
     if (!selectedCardId) return
-
+    const cardId = selectedCardId
+    const maxQty = ownedCardsById.get(cardId) ?? 0
     setDeck((prev) => {
       const next = [...prev]
-      next[slotIndex] = selectedCardId
-      return next.slice(0, MAX_DECK_SIZE)
+      const usedElsewhere = next.filter((id, i) => id === cardId && i !== slotIndex).length
+      if (usedElsewhere >= maxQty) return prev
+      next[slotIndex] = cardId
+      return next.slice(0, maxDeckSize)
     })
   }
 
@@ -108,7 +126,7 @@ export function DeckBuilder({
 
       <Card className="p-3 bg-card border-border">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="font-semibold">{t.myDeck} (max {MAX_DECK_SIZE})</h3>
+          <h3 className="font-semibold">{t.myDeck} (max {maxDeckSize})</h3>
           <Button size="sm" className="h-7 rounded-full px-3" onClick={handleSave} disabled={saving || deck.filter(Boolean).length === 0}>
             {saving ? t.savingDeck : t.saveDeck}
           </Button>
@@ -136,7 +154,7 @@ export function DeckBuilder({
           placeholder={t.deckName}
         />
         <div className="space-y-3">
-          {Array.from({ length: MAX_DECK_SIZE }).map((_, index) => (
+          {Array.from({ length: maxDeckSize }).map((_, index) => (
             <div
               key={`slot-${index}`}
               onDragOver={(event) => event.preventDefault()}

@@ -1,0 +1,350 @@
+"use client"
+
+import { useCallback, useEffect, useRef, useState } from "react"
+import Image from "next/image"
+import { Button } from "@/components/ui/button"
+import { LanguageToggle } from "@/components/mew/language-toggle"
+import { useMewI18n } from "@/lib/mew-i18n"
+import { BOSS_FIGHTERS } from "@/lib/mew-bosses"
+import type { FighterCard } from "@/lib/mew-types"
+
+interface PreAuthUkiyoeSplashProps {
+  onEnter: () => void
+}
+
+const MUSIC_VOLUME_STORAGE_KEY = "mewbattleSplashMusicVolume"
+const DEFAULT_SPLASH_VOLUME = 68
+const MAX_MASTER_GAIN = 0.11
+
+const PETALS = Array.from({ length: 22 }, (_, i) => ({
+  id: i,
+  left: `${3 + (i * 4.3 + i * i * 0.18) % 93}%`,
+  dur: `${5.5 + (i * 0.65) % 5}s`,
+  delay: `-${(i * 0.7) % 9}s`,
+  size: 10 + (i % 5) * 3,
+  drift: `${-70 + (i % 7) * 23}px`,
+}))
+
+const BLOSSOM_POSITIONS: [number, number][] = [
+  [198, 150], [255, 110], [308, 80], [358, 70], [295, 128],
+  [258, 156], [208, 174], [174, 200], [238, 138], [280, 98], [330, 58],
+]
+
+export function PreAuthUkiyoeSplash({ onEnter }: PreAuthUkiyoeSplashProps) {
+  const { t } = useMewI18n()
+  const [boss, setBoss] = useState<FighterCard>(BOSS_FIGHTERS[0])
+  const [musicVolume, setMusicVolume] = useState(DEFAULT_SPLASH_VOLUME)
+  const [musicPrefLoaded, setMusicPrefLoaded] = useState(false)
+  const audioCtxRef = useRef<AudioContext | null>(null)
+  const musicTimerRef = useRef<number | null>(null)
+  const droneRef = useRef<{ osc: OscillatorNode; gain: GainNode } | null>(null)
+  const masterGainRef = useRef<GainNode | null>(null)
+
+  const gainFromVolume = useCallback((volume: number) => {
+    if (volume <= 0) return 0.0001
+    const normalized = Math.max(0, Math.min(1, volume / 100))
+    return Math.pow(normalized, 1.15) * MAX_MASTER_GAIN
+  }, [])
+
+  const stopMusic = useCallback(() => {
+    if (musicTimerRef.current !== null) {
+      window.clearInterval(musicTimerRef.current)
+      musicTimerRef.current = null
+    }
+
+    if (droneRef.current) {
+      const now = audioCtxRef.current?.currentTime ?? 0
+      droneRef.current.gain.gain.cancelScheduledValues(now)
+      droneRef.current.gain.gain.setValueAtTime(droneRef.current.gain.gain.value, now)
+      droneRef.current.gain.gain.linearRampToValueAtTime(0.0001, now + 0.2)
+      droneRef.current.osc.stop(now + 0.22)
+      droneRef.current = null
+    }
+
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close().catch(() => undefined)
+      audioCtxRef.current = null
+    }
+
+    masterGainRef.current = null
+  }, [])
+
+  const startMusic = useCallback((volume = musicVolume) => {
+    if (typeof window === "undefined") return
+
+    if (audioCtxRef.current && masterGainRef.current) {
+      const now = audioCtxRef.current.currentTime
+      masterGainRef.current.gain.cancelScheduledValues(now)
+      masterGainRef.current.gain.setValueAtTime(masterGainRef.current.gain.value, now)
+      masterGainRef.current.gain.linearRampToValueAtTime(gainFromVolume(volume), now + 0.12)
+      return
+    }
+
+    const AudioCtx = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    if (!AudioCtx) return
+
+    const ctx = new AudioCtx()
+    audioCtxRef.current = ctx
+
+    const masterGain = ctx.createGain()
+    masterGain.gain.value = gainFromVolume(volume)
+    masterGain.connect(ctx.destination)
+    masterGainRef.current = masterGain
+
+    // Low sustained drone to make the ambience fuller but still quiet.
+    const droneOsc = ctx.createOscillator()
+    const droneGain = ctx.createGain()
+    droneOsc.type = "sine"
+    droneOsc.frequency.value = 110
+    droneGain.gain.value = 0.009
+    droneOsc.connect(droneGain)
+    droneGain.connect(masterGain)
+    droneOsc.start()
+    droneRef.current = { osc: droneOsc, gain: droneGain }
+
+    const notes = [220, 247, 294, 330, 392, 440]
+    let step = 0
+
+    const playNote = () => {
+      const now = ctx.currentTime
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+
+      osc.type = "triangle"
+      osc.frequency.value = notes[step % notes.length]
+      step += 1
+
+      gain.gain.setValueAtTime(0.0001, now)
+      gain.gain.exponentialRampToValueAtTime(0.022, now + 0.04)
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5)
+
+      osc.connect(gain)
+      gain.connect(masterGain)
+      osc.start(now)
+      osc.stop(now + 0.52)
+    }
+
+    playNote()
+    musicTimerRef.current = window.setInterval(playNote, 580)
+  }, [gainFromVolume, musicVolume])
+
+  const ensureMusicActive = useCallback(() => {
+    if (musicVolume <= 0) return
+    startMusic(musicVolume)
+    if (audioCtxRef.current?.state === "suspended") {
+      audioCtxRef.current.resume().catch(() => undefined)
+    }
+  }, [musicVolume, startMusic])
+
+  const handleVolumeChange = useCallback((nextVolume: number) => {
+    const safeVolume = Math.max(0, Math.min(100, nextVolume))
+    setMusicVolume(safeVolume)
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem(MUSIC_VOLUME_STORAGE_KEY, String(safeVolume))
+    }
+
+    if (safeVolume <= 0) {
+      stopMusic()
+      return
+    }
+
+    startMusic(safeVolume)
+    if (audioCtxRef.current?.state === "suspended") {
+      audioCtxRef.current.resume().catch(() => undefined)
+    }
+  }, [startMusic, stopMusic])
+
+  useEffect(() => {
+    setBoss(BOSS_FIGHTERS[Math.floor(Math.random() * BOSS_FIGHTERS.length)])
+  }, [])
+
+  useEffect(() => {
+    const stored = typeof window !== "undefined" ? localStorage.getItem(MUSIC_VOLUME_STORAGE_KEY) : null
+    if (stored !== null) {
+      const parsed = Number(stored)
+      if (Number.isFinite(parsed)) {
+        setMusicVolume(Math.max(0, Math.min(100, Math.round(parsed))))
+      }
+    }
+    setMusicPrefLoaded(true)
+  }, [])
+
+  useEffect(() => {
+    if (!musicPrefLoaded) return
+    if (musicVolume <= 0) {
+      stopMusic()
+      return
+    }
+    startMusic(musicVolume)
+  }, [musicPrefLoaded, musicVolume, startMusic, stopMusic])
+
+  useEffect(() => {
+    const onUserInteraction = () => {
+      ensureMusicActive()
+    }
+
+    window.addEventListener("pointerdown", onUserInteraction, { once: true })
+    return () => {
+      window.removeEventListener("pointerdown", onUserInteraction)
+      stopMusic()
+    }
+  }, [ensureMusicActive, stopMusic])
+
+  return (
+    <div className="absolute inset-0 overflow-hidden" onPointerDown={ensureMusicActive}>
+      <style>{`
+        @keyframes petalFall {
+          0%   { opacity: 0; transform: translateY(-30px) rotate(0deg) translateX(0px); }
+          8%   { opacity: 0.88; }
+          88%  { opacity: 0.55; }
+          100% { opacity: 0; transform: translateY(105vh) rotate(660deg) translateX(var(--petal-drift)); }
+        }
+        .splash-petal { animation: petalFall var(--petal-dur) var(--petal-delay) ease-in infinite; }
+      `}</style>
+
+      {/* Night sky */}
+      <div className="absolute inset-0 bg-[linear-gradient(168deg,#0c0920_0%,#190d2d_30%,#26122a_62%,#0e1828_100%)]" />
+
+      {/* Moon */}
+      <div className="absolute right-[10%] top-[6%] h-28 w-28 rounded-full bg-amber-50/12 blur-3xl" />
+      <svg className="absolute right-[11%] top-[7%] h-14 w-14" viewBox="0 0 60 60" aria-hidden="true">
+        <circle cx="30" cy="30" r="26" fill="#fffbeb" fillOpacity="0.88" />
+        <circle cx="34" cy="24" r="9" fill="#0c0920" fillOpacity="0.52" />
+      </svg>
+
+      {/* Sakura branch */}
+      <svg className="pointer-events-none absolute -left-6 -top-4 h-[64%] w-[58%] opacity-68" viewBox="0 0 500 420" aria-hidden="true">
+        <path d="M-10 420 C 55 340, 132 240, 200 155 C 248 90, 290 54, 345 18" stroke="#7c4a34" strokeWidth="16" fill="none" strokeLinecap="round" />
+        <path d="M200 155 C 265 132, 318 96, 374 76" stroke="#7c4a34" strokeWidth="8" fill="none" strokeLinecap="round" />
+        <path d="M160 212 C 216 184, 268 166, 308 138" stroke="#7c4a34" strokeWidth="6" fill="none" strokeLinecap="round" />
+        <path d="M122 280 C 158 255, 192 233, 225 206" stroke="#7c4a34" strokeWidth="5" fill="none" strokeLinecap="round" />
+        <path d="M238 145 C 256 115, 274 89, 300 70" stroke="#7c4a34" strokeWidth="5" fill="none" strokeLinecap="round" />
+        {BLOSSOM_POSITIONS.map(([cx, cy], i) => (
+          <g key={i}>
+            {[0, 72, 144, 216, 288].map((deg, j) => {
+              const angle = (deg + 18) * Math.PI / 180
+              return (
+                <ellipse
+                  key={j}
+                  cx={cx + Math.cos(angle) * 9}
+                  cy={cy + Math.sin(angle) * 9}
+                  rx="5.5" ry="3.5"
+                  transform={`rotate(${deg + 18},${cx},${cy})`}
+                  fill={i % 3 === 0 ? "#f9a8d4" : i % 3 === 1 ? "#fbb6ce" : "#fbcfe8"}
+                  fillOpacity="0.9"
+                />
+              )
+            })}
+            <circle cx={cx} cy={cy} r="2.5" fill="#fde68a" fillOpacity="0.95" />
+          </g>
+        ))}
+      </svg>
+
+      {/* Bottom fade */}
+      <div className="absolute inset-x-0 bottom-0 h-[52%] bg-[linear-gradient(180deg,transparent_0%,rgba(12,9,32,0.8)_52%,rgba(5,4,15,0.97)_100%)]" />
+
+      {/* Falling petals */}
+      {PETALS.map((p) => (
+        <svg
+          key={p.id}
+          aria-hidden="true"
+          className="splash-petal pointer-events-none absolute"
+          style={{
+            left: p.left,
+            top: "-20px",
+            width: p.size,
+            height: p.size,
+            "--petal-dur": p.dur,
+            "--petal-delay": p.delay,
+            "--petal-drift": p.drift,
+          } as React.CSSProperties}
+          viewBox="0 0 20 20"
+        >
+          <ellipse cx="10" cy="7" rx="5" ry="8" fill="#f9a8d4" opacity="0.85" transform="rotate(-20,10,10)" />
+          <ellipse cx="10" cy="13" rx="5" ry="8" fill="#fbbfe4" opacity="0.75" transform="rotate(20,10,10)" />
+        </svg>
+      ))}
+
+      {/* Cards row: 3 cats + random boss */}
+      <div className="absolute inset-0 flex items-end justify-center pb-12">
+        <div className="flex w-full max-w-3xl flex-col items-center gap-4 px-3 sm:px-4">
+          <div className="relative">
+            <span className="absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-rose-400/55 bg-rose-900/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-200">
+              BOSS
+            </span>
+            <Image
+              src={boss.imageUrl ?? "/bosses/evil_raven.svg"}
+              alt={boss.name}
+              width={144}
+              height={144}
+              className="rounded-2xl border border-rose-500/50 bg-black/35 p-1 shadow-2xl shadow-rose-900/55"
+            />
+          </div>
+
+          <div className="grid w-full max-w-xl grid-cols-3 items-end gap-3">
+            <Image
+              src="/cards/cat_ninja.svg"
+              alt="Cat Ninja"
+              width={126}
+              height={126}
+              className="justify-self-end rounded-2xl border border-white/15 bg-black/20 p-1 shadow-2xl shadow-black/40"
+            />
+            <Image
+              src="/cards/cat_dragon.svg"
+              alt="Cat Dragon"
+              width={136}
+              height={136}
+              className="-mb-2 justify-self-center rounded-2xl border border-amber-300/25 bg-black/25 p-1 shadow-2xl shadow-amber-900/35"
+            />
+            <Image
+              src="/cards/cat_mage.svg"
+              alt="Cat Mage"
+              width={126}
+              height={126}
+              className="justify-self-start rounded-2xl border border-white/15 bg-black/20 p-1 shadow-2xl shadow-black/40"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Language and music controls */}
+      <div className="absolute right-4 top-4 z-10 flex flex-col items-end gap-2">
+        <div className="w-[180px] rounded-xl border border-amber-200/30 bg-black/45 px-2.5 py-2 backdrop-blur-[2px]">
+          <div className="mb-1 flex items-center justify-between text-[11px] text-amber-100">
+            <span>{t.splashMusicVolume}</span>
+            <span>{musicVolume === 0 ? t.splashMuted : `${musicVolume}%`}</span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={1}
+            value={musicVolume}
+            onChange={(event) => handleVolumeChange(Number(event.target.value))}
+            className="h-1.5 w-full accent-amber-400"
+            aria-label={t.splashMusicVolume}
+          />
+        </div>
+        <LanguageToggle />
+      </div>
+
+      {/* Title card */}
+      <div className="absolute inset-x-0 top-10 flex justify-center px-4">
+        <div className="max-w-xl rounded-2xl border border-amber-300/30 bg-black/40 px-6 py-4 text-center backdrop-blur-[3px]">
+          <h1 className='text-2xl font-black tracking-wide text-amber-100 font-["Trebuchet_MS","Verdana",sans-serif]'>
+            {t.splashTitle}
+          </h1>
+          <p className="mt-1.5 text-sm text-amber-50/80">{t.splashSubtitle}</p>
+          <p className="mt-2 text-xs uppercase tracking-[0.18em] text-amber-200/80">{t.splashHint}</p>
+          <Button
+            className="mt-3 h-8 rounded-full bg-amber-500 px-5 text-xs font-semibold text-slate-950 hover:bg-amber-400"
+            onClick={onEnter}
+          >
+            {t.splashEnter}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}

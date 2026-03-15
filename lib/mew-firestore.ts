@@ -4,6 +4,8 @@ import {
   getDoc,
   getDocs,
   increment,
+  limit as firestoreLimit,
+  orderBy,
   query,
   runTransaction,
   setDoc,
@@ -75,9 +77,9 @@ export interface UserBattleLog {
 export const DECK_SLOT_KEYS = ["deck1", "deck2", "deck3"] as const
 export type DeckSlotKey = (typeof DECK_SLOT_KEYS)[number]
 const STARTING_COINS = 500
-const BATTLE_WIN_REWARD = 90
-const BATTLE_LOSS_REWARD = 25
-const QUICK_WIN_BONUS = 20
+const STARTING_DECK_SIZE = 3
+const MAX_DECK_SIZE_UPGRADED = 4
+export const BATTLE_ENTRY_COST = 25
 
 const SELL_PRICES: Record<CardRarity, number> = {
   common: 20,
@@ -101,6 +103,30 @@ const STARTER_CARDS: MewCard[] = [
     rarity: "common",
     imageUrl: "/cards/cat_knight.svg",
     ability: "Shield stance",
+    lore: "A loyal temple guard who stands firm against beak and claw.",
+    bossAffinities: [],
+  },
+  {
+    id: "cat_alchemist",
+    name: "Cat Alchemist",
+    attack: 12,
+    health: 49,
+    rarity: "common",
+    imageUrl: "/cards/cat_alchemist.svg",
+    ability: "Tonic shield",
+    lore: "An apothecary tactician who raises a tonic shield and keeps the line stable.",
+    bossAffinities: [],
+  },
+  {
+    id: "cat_phantom",
+    name: "Cat Phantom",
+    attack: 14,
+    health: 39,
+    rarity: "common",
+    imageUrl: "/cards/cat_phantom.svg",
+    ability: "Phantom dodge",
+    lore: "A whispering specter that fades between strikes and dodges fatal blows.",
+    bossAffinities: [],
   },
   {
     id: "cat_ninja",
@@ -110,6 +136,10 @@ const STARTER_CARDS: MewCard[] = [
     rarity: "rare",
     imageUrl: "/cards/cat_ninja.svg",
     ability: "30% dodge",
+    lore: "Silent hunter of moonlit rooftops, lethal against rushing beasts.",
+    bossAffinities: [
+      { bossType: "dog", level: 2 },
+    ],
   },
   {
     id: "cat_mage",
@@ -119,6 +149,11 @@ const STARTER_CARDS: MewCard[] = [
     rarity: "epic",
     imageUrl: "/cards/cat_mage.svg",
     ability: "Magic shield",
+    lore: "Arcane scholar of warding arts, strongest against plague swarms.",
+    bossAffinities: [
+      { bossType: "rat", level: 2 },
+      { bossType: "raven", level: 1 },
+    ],
   },
   {
     id: "cat_berserker",
@@ -128,6 +163,10 @@ const STARTER_CARDS: MewCard[] = [
     rarity: "rare",
     imageUrl: "/cards/cat_berserker.svg",
     ability: "Chance for double strike",
+    lore: "War-clan champion who breaks armor with relentless force.",
+    bossAffinities: [
+      { bossType: "dog", level: 2 },
+    ],
   },
   {
     id: "cat_vampire",
@@ -137,6 +176,11 @@ const STARTER_CARDS: MewCard[] = [
     rarity: "epic",
     imageUrl: "/cards/cat_vampire.svg",
     ability: "Vamp: heal from damage",
+    lore: "Ancient night stalker drawing strength from every wound inflicted.",
+    bossAffinities: [
+      { bossType: "rat", level: 1 },
+      { bossType: "raven", level: 2 },
+    ],
   },
   {
     id: "cat_dragon",
@@ -146,6 +190,12 @@ const STARTER_CARDS: MewCard[] = [
     rarity: "legendary",
     imageUrl: "/cards/cat_dragon.svg",
     ability: "Legendary double fire",
+    lore: "Mythic flame sovereign feared by all bosses of the cursed wilds.",
+    bossAffinities: [
+      { bossType: "raven", level: 1 },
+      { bossType: "dog", level: 1 },
+      { bossType: "rat", level: 1 },
+    ],
   },
 ]
 
@@ -158,6 +208,8 @@ const RARITY_WEIGHTS: Record<CardRarity, number> = {
 
 const LOCAL_CARD_ART_BY_ID: Record<string, string> = {
   cat_knight: "/cards/cat_knight.svg",
+  cat_alchemist: "/cards/cat_alchemist.svg",
+  cat_phantom: "/cards/cat_phantom.svg",
   cat_ninja: "/cards/cat_ninja.svg",
   cat_mage: "/cards/cat_mage.svg",
   cat_berserker: "/cards/cat_berserker.svg",
@@ -176,6 +228,48 @@ function withLocalArt(card: MewCard): MewCard {
   return card
 }
 
+function pickUniqueCards(source: MewCard[], count: number): MewCard[] {
+  const shuffled = [...source]
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1))
+    const temp = shuffled[i]
+    shuffled[i] = shuffled[j]
+    shuffled[j] = temp
+  }
+  return shuffled.slice(0, Math.max(0, Math.min(count, shuffled.length)))
+}
+
+function getBoosterCardCount(offer: BoosterOffer): number {
+  const roll = Math.random()
+  if (offer.id === "starter") {
+    if (roll < 0.55) return 0
+    if (roll < 0.9) return 1
+    return 2
+  }
+
+  if (offer.id === "hunter") {
+    if (roll < 0.35) return 0
+    if (roll < 0.8) return 1
+    return 2
+  }
+
+  if (roll < 0.2) return 0
+  if (roll < 0.65) return 1
+  return 2
+}
+
+function didUnlockFourthSlot(offer: BoosterOffer): boolean {
+  const roll = Math.random()
+  if (offer.id === "starter") return roll < 0.01
+  if (offer.id === "hunter") return roll < 0.03
+  return roll < 0.06
+}
+
+export interface BoosterOpenResult {
+  cards: MewCard[]
+  unlockedDeckSlot: boolean
+}
+
 export async function ensureCardsSeeded(): Promise<void> {
   const snapshot = await getDocs(collection(db, "cards"))
   if (!snapshot.empty) return
@@ -189,7 +283,10 @@ export async function fetchCards(): Promise<MewCard[]> {
   try {
     const snapshot = await getDocs(collection(db, "cards"))
     if (!snapshot.empty) {
-      return snapshot.docs.map((d) => withLocalArt(d.data() as MewCard))
+      const fromDb = snapshot.docs.map((d) => withLocalArt(d.data() as MewCard))
+      const existingIds = new Set(fromDb.map((card) => card.id))
+      const missingStarterCards = STARTER_CARDS.filter((card) => !existingIds.has(card.id))
+      return [...fromDb, ...missingStarterCards]
     }
   } catch {
     // Firestore read may be blocked by rules in some environments.
@@ -241,16 +338,50 @@ export async function ensureUserProfile(userId: string): Promise<void> {
   const ref = profileRef(userId)
   await runTransaction(db, async (tx) => {
     const snapshot = await tx.get(ref)
-    if (snapshot.exists()) return
+    if (snapshot.exists()) {
+      const data = snapshot.data() as Partial<UserProfile>
+      const needsPatch =
+        typeof data.coins !== "number" ||
+        typeof data.maxDeckSize !== "number" ||
+        typeof data.wins !== "number" ||
+        typeof data.losses !== "number" ||
+        typeof data.streak !== "number" ||
+        typeof data.totalEarned !== "number" ||
+        typeof data.totalSpent !== "number" ||
+        typeof data.cardCount !== "number" ||
+        typeof data.nickname !== "string"
+
+      if (!needsPatch) return
+
+      tx.set(ref, {
+        userId,
+        nickname: data.nickname ?? "",
+        coins: data.coins ?? STARTING_COINS,
+        maxDeckSize: data.maxDeckSize ?? STARTING_DECK_SIZE,
+        wins: data.wins ?? 0,
+        losses: data.losses ?? 0,
+        streak: data.streak ?? 0,
+        totalEarned: data.totalEarned ?? STARTING_COINS,
+        totalSpent: data.totalSpent ?? 0,
+        cardCount: data.cardCount ?? 0,
+        updatedAtMs: Date.now(),
+        updatedAt: serverTimestamp(),
+      }, { merge: true })
+      return
+    }
 
     tx.set(ref, {
       userId,
+      nickname: "",
       coins: STARTING_COINS,
+      maxDeckSize: STARTING_DECK_SIZE,
       wins: 0,
       losses: 0,
       streak: 0,
       totalEarned: STARTING_COINS,
       totalSpent: 0,
+      cardCount: 0,
+      updatedAtMs: Date.now(),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     })
@@ -260,10 +391,17 @@ export async function ensureUserProfile(userId: string): Promise<void> {
 export async function fetchUserProfile(userId: string): Promise<UserProfile> {
   await ensureUserProfile(userId)
   const snapshot = await getDoc(profileRef(userId))
-  return snapshot.data() as UserProfile
+  const data = snapshot.data() as UserProfile
+  return {
+    ...data,
+    nickname: data.nickname ?? "",
+    maxDeckSize: data.maxDeckSize ?? STARTING_DECK_SIZE,
+    cardCount: data.cardCount ?? 0,
+    updatedAtMs: data.updatedAtMs ?? 0,
+  }
 }
 
-export async function openBoosterWithCoins(userId: string, allCards: MewCard[], count = 5): Promise<MewCard[]> {
+export async function openBoosterWithCoins(userId: string, allCards: MewCard[], count = 5): Promise<BoosterOpenResult> {
   const defaultOffer = BOOSTER_OFFERS.find((offer) => offer.cost === BOOSTER_PACK_COST) ?? BOOSTER_OFFERS[1]
   return openBoosterWithOffer(userId, allCards, defaultOffer.id, count)
 }
@@ -273,8 +411,13 @@ export async function openBoosterWithOffer(
   allCards: MewCard[],
   offerId: BoosterOffer["id"],
   count = 5,
-): Promise<MewCard[]> {
-  if (allCards.length === 0) return []
+): Promise<BoosterOpenResult> {
+  if (allCards.length === 0) {
+    return {
+      cards: [],
+      unlockedDeckSlot: false,
+    }
+  }
 
   const offer = BOOSTER_OFFERS.find((candidate) => candidate.id === offerId)
   if (!offer) {
@@ -300,9 +443,41 @@ export async function openBoosterWithOffer(
     }, { merge: true })
   })
 
-  const dropped = drawBooster(allCards, count, offer.rarityWeights)
-  await addCardsToInventory(userId, dropped.map((card) => card.id))
-  return dropped
+  const dropCount = Math.max(0, Math.min(2, count, getBoosterCardCount(offer)))
+  const dropped = drawBooster(allCards, dropCount, offer.rarityWeights)
+  if (dropped.length > 0) {
+    await addCardsToInventory(userId, dropped.map((card) => card.id))
+    await setDoc(profileRef(userId), {
+      userId,
+      cardCount: increment(dropped.length),
+      updatedAtMs: Date.now(),
+    }, { merge: true })
+  }
+
+  const unlockRoll = didUnlockFourthSlot(offer)
+  let unlockedDeckSlot = false
+
+  if (unlockRoll) {
+    await runTransaction(db, async (tx) => {
+      const pRef = profileRef(userId)
+      const snap = await tx.get(pRef)
+      const profile = snap.data() as UserProfile | undefined
+      const currentMax = profile?.maxDeckSize ?? STARTING_DECK_SIZE
+      if (currentMax >= MAX_DECK_SIZE_UPGRADED) return
+
+      tx.set(pRef, {
+        userId,
+        maxDeckSize: MAX_DECK_SIZE_UPGRADED,
+        updatedAt: serverTimestamp(),
+      }, { merge: true })
+      unlockedDeckSlot = true
+    })
+  }
+
+  return {
+    cards: dropped,
+    unlockedDeckSlot,
+  }
 }
 
 export async function fetchUserBattleLogs(userId: string, limit = 20): Promise<UserBattleLog[]> {
@@ -366,7 +541,29 @@ export async function sellUserCardForCoins(userId: string, card: MewCard): Promi
   return reward
 }
 
-export async function awardBattleCoins(userId: string, didWin: boolean, turns: number): Promise<number> {
+export async function payBattleEntry(userId: string, cost = BATTLE_ENTRY_COST): Promise<void> {
+  await ensureUserProfile(userId)
+  const ref = profileRef(userId)
+
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref)
+    const profile = snap.data() as UserProfile | undefined
+
+    const coins = profile?.coins ?? STARTING_COINS
+    if (coins < cost) {
+      throw new Error("INSUFFICIENT_COINS_FOR_BATTLE")
+    }
+
+    tx.set(ref, {
+      userId,
+      coins: coins - cost,
+      totalSpent: (profile?.totalSpent ?? 0) + cost,
+      updatedAt: serverTimestamp(),
+    }, { merge: true })
+  })
+}
+
+export async function awardBattleCoins(userId: string, didWin: boolean, rewardOnWin: number): Promise<number> {
   await ensureUserProfile(userId)
   const ref = profileRef(userId)
 
@@ -376,10 +573,7 @@ export async function awardBattleCoins(userId: string, didWin: boolean, turns: n
 
     const currentStreak = profile?.streak ?? 0
     const nextStreak = didWin ? currentStreak + 1 : 0
-    const streakBonus = didWin ? Math.min(40, nextStreak * 10) : 0
-    const quickWinBonus = didWin && turns > 0 && turns <= 6 ? QUICK_WIN_BONUS : 0
-
-    const earned = didWin ? BATTLE_WIN_REWARD + quickWinBonus + streakBonus : BATTLE_LOSS_REWARD
+    const earned = didWin ? Math.max(50, Math.min(200, Math.round(rewardOnWin))) : 0
 
     tx.set(ref, {
       userId,
@@ -406,19 +600,43 @@ export async function ensureDefaultDeckSlots(userId: string): Promise<void> {
   const bySlot = new Set(existing.map((deck) => deck.slot).filter((slot): slot is DeckSlotKey => !!slot))
 
   const missingSlots = DECK_SLOT_KEYS.filter((slotKey) => !bySlot.has(slotKey))
-  if (missingSlots.length === 0) return
+  if (missingSlots.length > 0) {
+    const batch = writeBatch(db)
+    missingSlots.forEach((slotKey) => {
+      const deckId = `${userId}_${slotKey}`
+      batch.set(doc(db, "decks", deckId), {
+        userId,
+        slot: slotKey,
+        deckName: DEFAULT_DECK_NAMES[slotKey],
+        cards: [],
+      }, { merge: true })
+    })
+    await batch.commit()
+  }
 
-  const batch = writeBatch(db)
-  missingSlots.forEach((slotKey) => {
-    const deckId = `${userId}_${slotKey}`
-    batch.set(doc(db, "decks", deckId), {
-      userId,
-      slot: slotKey,
-      deckName: DEFAULT_DECK_NAMES[slotKey],
-      cards: [],
-    }, { merge: true })
-  })
-  await batch.commit()
+  const inventory = await fetchUserCards(userId)
+  if (inventory.length > 0) return
+
+  const starterCards = pickUniqueCards(STARTER_CARDS, STARTING_DECK_SIZE)
+  const starterIds = starterCards.map((card) => card.id)
+
+  if (starterIds.length > 0) {
+    await addCardsToInventory(userId, starterIds)
+  }
+
+  const deckOneId = `${userId}_deck1`
+  await setDoc(doc(db, "decks", deckOneId), {
+    userId,
+    slot: "deck1",
+    deckName: DEFAULT_DECK_NAMES.deck1,
+    cards: starterIds,
+  }, { merge: true })
+
+  await setDoc(profileRef(userId), {
+    userId,
+    cardCount: STARTING_DECK_SIZE,
+    updatedAtMs: Date.now(),
+  }, { merge: true })
 }
 
 export function getDefaultDeckName(slotKey: DeckSlotKey): string {
@@ -430,13 +648,30 @@ export async function saveDeckToSlot(
   slotKey: DeckSlotKey,
   deckName: string,
   cards: string[],
+  maxDeckSize = STARTING_DECK_SIZE,
 ): Promise<void> {
+  const inventory = await fetchUserCards(userId)
+  const ownedByCardId = new Map(inventory.map((item) => [item.cardId, item.quantity]))
+  const usedByCardId = new Map<string, number>()
+
+  const safeCards: string[] = []
+  for (const cardId of cards) {
+    const ownedQty = ownedByCardId.get(cardId) ?? 0
+    if (ownedQty <= 0) continue
+
+    const usedQty = usedByCardId.get(cardId) ?? 0
+    if (usedQty >= ownedQty) continue
+
+    usedByCardId.set(cardId, usedQty + 1)
+    safeCards.push(cardId)
+  }
+
   const deckId = `${userId}_${slotKey}`
   await setDoc(doc(db, "decks", deckId), {
     userId,
     slot: slotKey,
     deckName: deckName.trim() || DEFAULT_DECK_NAMES[slotKey],
-    cards: cards.slice(0, 10),
+    cards: safeCards.slice(0, Math.max(1, Math.min(MAX_DECK_SIZE_UPGRADED, maxDeckSize))),
   }, { merge: true })
 }
 
@@ -461,6 +696,7 @@ export function drawBooster(
   count = 5,
   rarityWeights: Record<CardRarity, number> = RARITY_WEIGHTS,
 ): MewCard[] {
+  if (count <= 0) return []
   const byRarity = {
     common: cards.filter((c) => c.rarity === "common"),
     rare: cards.filter((c) => c.rarity === "rare"),
@@ -489,4 +725,105 @@ export function drawBooster(
     pack.push(picked)
   }
   return pack
+}
+
+/**
+ * Полностью сбрасывает прогресс пользователя до начального состояния:
+ * – профиль: 500 монет, 0 побед/поражений, maxDeckSize = 3
+ * – инвентарь: все карты удаляются
+ * – колоды: все слоты очищаются
+ * – стартовые 3 карты добавляются в инвентарь и deck1
+ */
+export async function resetUserToInitialState(userId: string): Promise<void> {
+  // 1. Получить все пользовательские карты для удаления
+  const userCardsSnap = await getDocs(
+    query(collection(db, "user_cards"), where("userId", "==", userId)),
+  )
+
+  const batch = writeBatch(db)
+
+  // 2. Удалить все карты инвентаря
+  userCardsSnap.docs.forEach((cardDoc) => batch.delete(cardDoc.ref))
+
+  // 3. Очистить все слоты колод
+  DECK_SLOT_KEYS.forEach((slotKey) => {
+    batch.set(doc(db, "decks", `${userId}_${slotKey}`), {
+      userId,
+      slot: slotKey,
+      deckName: DEFAULT_DECK_NAMES[slotKey],
+      cards: [],
+    })
+  })
+
+  // 4. Сбросить профиль
+  batch.set(profileRef(userId), {
+    userId,
+    coins: STARTING_COINS,
+    maxDeckSize: STARTING_DECK_SIZE,
+    wins: 0,
+    losses: 0,
+    streak: 0,
+    totalEarned: STARTING_COINS,
+    totalSpent: 0,
+    cardCount: STARTING_DECK_SIZE,
+    updatedAtMs: Date.now(),
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  }, { merge: true })
+
+  await batch.commit()
+
+  // 5. Засеять стартовые карты и заполнить deck1
+  const starterCards = pickUniqueCards(STARTER_CARDS, STARTING_DECK_SIZE)
+  const starterIds = starterCards.map((c) => c.id)
+
+  await addCardsToInventory(userId, starterIds)
+
+  await setDoc(doc(db, "decks", `${userId}_deck1`), {
+    userId,
+    slot: "deck1",
+    deckName: DEFAULT_DECK_NAMES.deck1,
+    cards: starterIds,
+  }, { merge: true })
+}
+
+export async function saveUserNickname(userId: string, nickname: string): Promise<void> {
+  await ensureUserProfile(userId)
+  await setDoc(profileRef(userId), {
+    userId,
+    nickname: nickname.trim().slice(0, 10),
+    updatedAtMs: Date.now(),
+    updatedAt: serverTimestamp(),
+  }, { merge: true })
+}
+
+export interface LeaderboardEntry {
+  userId: string
+  nickname: string
+  totalEarned: number
+  cardCount: number
+  updatedAtMs: number
+}
+
+export async function fetchLeaderboard(topN = 25): Promise<LeaderboardEntry[]> {
+  try {
+    const q = query(
+      collection(db, "user_profiles"),
+      orderBy("totalEarned", "desc"),
+      firestoreLimit(topN),
+    )
+    const snap = await getDocs(q)
+    return snap.docs.map((d) => {
+      const data = d.data() as UserProfile
+      return {
+        userId: data.userId,
+        nickname: data.nickname?.trim() || data.userId.slice(0, 8),
+        totalEarned: data.totalEarned ?? 0,
+        cardCount: data.cardCount ?? 0,
+        updatedAtMs: data.updatedAtMs ?? 0,
+      }
+    })
+  } catch {
+    return []
+  }
 }

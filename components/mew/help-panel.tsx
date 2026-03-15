@@ -3,16 +3,22 @@
 import { Card } from "@/components/ui/card"
 import { MewCardFace } from "@/components/mew/mew-card-face"
 import { useMewI18n } from "@/lib/mew-i18n"
+import type { MewCard } from "@/lib/mew-types"
 
-const LEGEND_SAMPLE_CARD = {
-  id: "help_sample_epic",
-  name: "Arcane Cat",
+const LEGEND_SAMPLE_CARD: MewCard = {
+  id: "cat_mage",
+  name: "Cat Mage",
   attack: 18,
-  health: 42,
+  health: 38,
   rarity: "epic",
   imageUrl: "/cards/cat_mage.svg",
-  ability: "Arcane shield",
-} as const
+  ability: "Magic shield",
+  lore: "Arcane scholar of warding arts, strongest against plague swarms.",
+  bossAffinities: [
+    { bossType: "rat", level: 2 },
+    { bossType: "raven", level: 1 },
+  ],
+}
 
 export function HelpPanel() {
   const { t } = useMewI18n()
@@ -47,6 +53,7 @@ export function HelpPanel() {
             <p><span className="font-semibold text-foreground">HP</span> - {t.helpStatHp}</p>
             <p><span className="font-semibold text-foreground">x1</span> - {t.helpStatOwned}</p>
             <p><span className="font-semibold text-foreground">EPIC</span> - {t.helpStatRarity}</p>
+            <p><span className="font-semibold text-foreground">Affinity</span> - {t.paramAffinityDesc}</p>
           </div>
         </div>
       </Card>

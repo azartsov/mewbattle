@@ -8,7 +8,9 @@
     "build": "node scripts/update-version.js && next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "migrate:cards": "node scripts/migrate-card-fields.mjs",
+    "migrate:cards:dry": "node scripts/migrate-card-fields.mjs --dry-run"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

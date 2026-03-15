@@ -1,8 +1,13 @@
 "use client"
 
 import Image from "next/image"
+import { Info } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { MewCard } from "@/lib/mew-types"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { useMewI18n } from "@/lib/mew-i18n"
+import { BOSS_TYPE_ICON, BOSS_TYPE_THEME } from "@/lib/mew-bosses"
+import { CARD_META_RU } from "@/lib/mew-card-meta"
 
 interface MewCardFaceProps {
   card: MewCard
@@ -39,7 +44,19 @@ const RARITY_THEME: Record<MewCard["rarity"], {
 }
 
 export function MewCardFace({ card, owned, compact = false, className }: MewCardFaceProps) {
+  const { t, language } = useMewI18n()
   const theme = RARITY_THEME[card.rarity]
+  const affinities = card.bossAffinities ?? []
+  const metaRu = language === "ru" ? (CARD_META_RU[card.id] ?? null) : null
+  const displayName = metaRu?.name ?? card.name
+  const displayLore = metaRu?.lore ?? card.lore ?? card.ability
+  const displayAbility = metaRu?.ability ?? card.ability
+
+  const bossTypeLabel = (bossType: "raven" | "dog" | "rat") => {
+    if (bossType === "raven") return t.bossRaven
+    if (bossType === "dog") return t.bossDog
+    return t.bossRat
+  }
 
   return (
     <article
@@ -69,11 +86,57 @@ export function MewCardFace({ card, owned, compact = false, className }: MewCard
         >
           {card.rarity}
         </span>
+        <Dialog>
+          <DialogTrigger asChild>
+            <button
+              type="button"
+              aria-label={t.details}
+              title={t.details}
+              className="absolute left-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/25 bg-black/45 text-slate-100 transition-colors hover:bg-black/65"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <Info className="h-3.5 w-3.5" />
+            </button>
+          </DialogTrigger>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{displayName}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 text-sm">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">{t.characterLore}</p>
+                <p className="mt-1 text-sm text-foreground/90">{displayLore}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">{t.paramList}</p>
+                <ul className="mt-1 space-y-1 text-xs text-foreground/85">
+                  <li>ATK {card.attack} - {t.paramAttackDesc}</li>
+                  <li>HP {card.health} - {t.paramHealthDesc}</li>
+                  <li>{t.rarityCommon}/{t.rarityRare}/{t.rarityEpic}/{t.rarityLegendary} - {t.paramRarityDesc}</li>
+                  <li>{displayAbility} - {t.paramAbilityDesc}</li>
+                  <li>{t.paramAffinityDesc}</li>
+                </ul>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {affinities.length === 0 && <span className="text-xs text-muted-foreground">{t.noAffinity}</span>}
+                {affinities.map((affinity) => (
+                  <span
+                    key={`${card.id}-${affinity.bossType}`}
+                    className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs", BOSS_TYPE_THEME[affinity.bossType].chipClass)}
+                  >
+                    <Image src={BOSS_TYPE_ICON[affinity.bossType]} alt={bossTypeLabel(affinity.bossType)} width={14} height={14} className="rounded-sm" />
+                    {bossTypeLabel(affinity.bossType)} Lv{affinity.level}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className={cn("space-y-2 p-3", compact && "space-y-1.5 p-2.5")}>
         <div className="flex items-start justify-between gap-2">
-          <h4 className={cn("font-semibold leading-tight", compact ? "text-sm" : "text-base")}>{card.name}</h4>
+          <h4 className={cn("font-semibold leading-tight", compact ? "text-sm" : "text-base")}>{displayName}</h4>
           {typeof owned === "number" && (
             <span className="rounded-md border border-border bg-secondary/60 px-1.5 py-0.5 text-[11px] font-medium text-secondary-foreground">
               x{owned}
@@ -86,7 +149,22 @@ export function MewCardFace({ card, owned, compact = false, className }: MewCard
           <span className="rounded-md bg-emerald-500/15 px-2 py-1 text-emerald-200">HP {card.health}</span>
         </div>
 
-        {!compact && <p className="line-clamp-2 text-xs text-muted-foreground">{card.ability}</p>}
+        <div className="flex min-h-[22px] flex-wrap items-center gap-1.5">
+          {affinities.length === 0 && (
+            <span className="invisible inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px]">Lv0</span>
+          )}
+          {affinities.map((affinity) => (
+            <span
+              key={`${card.id}-${affinity.bossType}-chip`}
+              className={cn("inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px]", BOSS_TYPE_THEME[affinity.bossType].chipClass)}
+            >
+              <Image src={BOSS_TYPE_ICON[affinity.bossType]} alt={bossTypeLabel(affinity.bossType)} width={12} height={12} className="rounded-sm" />
+              Lv{affinity.level}
+            </span>
+          ))}
+        </div>
+
+        {!compact && <p className="line-clamp-2 text-xs text-muted-foreground">{displayAbility}</p>}
       </div>
     </article>
   )

@@ -2,18 +2,21 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Image from "next/image"
-import { BookOpen, CircleHelp, Crown, Gem, Gift, PawPrint, Play, Shield, Sparkles, Swords, TrendingUp } from "lucide-react"
+import { BookOpen, CircleHelp, Crown, Gem, Gift, LogOut, MoreVertical, PawPrint, Play, RotateCcw, Shield, Sparkles, Swords, TrendingUp, Trophy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/lib/auth-context"
 import {
   awardBattleCoins,
+  BATTLE_ENTRY_COST,
   BOOSTER_OFFERS,
   DECK_SLOT_KEYS,
   ensureDefaultDeckSlots,
   fetchCards,
+  fetchLeaderboard,
   fetchUserBattleLogs,
   getDefaultDeckName,
   fetchUserProfile,
@@ -21,39 +24,51 @@ import {
   fetchUserDecks,
   getCardSellPrice,
   openBoosterWithOffer,
+  payBattleEntry,
+  resetUserToInitialState,
   saveBattleLog,
   saveDeckToSlot,
   sellUserCardForCoins,
 } from "@/lib/mew-firestore"
-import type { BattleLogEntry, Deck, MewCard, UserCard, UserProfile } from "@/lib/mew-types"
-import type { DeckSlotKey, BoosterOffer, UserBattleLog } from "@/lib/mew-firestore"
+import type { BattleLogEntry, Deck, FighterCard, MewCard, UserCard, UserProfile } from "@/lib/mew-types"
+import type { BoosterOpenResult, DeckSlotKey, BoosterOffer, LeaderboardEntry, UserBattleLog } from "@/lib/mew-firestore"
 import { CardCollection } from "@/components/mew/card-collection"
 import { DeckBuilder } from "@/components/mew/deck-builder"
 import { BoosterShop } from "@/components/mew/booster-shop"
 import { BattleArena } from "@/components/mew/battle-arena"
+import { BattleFighterCard } from "@/components/mew/battle-fighter-card"
+import { MewCardFace } from "@/components/mew/mew-card-face"
 import { CoinPawBadge } from "@/components/mew/coin-paw-badge"
 import { HelpPanel } from "@/components/mew/help-panel"
 import { LanguageToggle } from "@/components/mew/language-toggle"
+import { PreAuthUkiyoeSplash } from "@/components/mew/pre-auth-ukiyoe-splash"
 import { useMewI18n } from "@/lib/mew-i18n"
+import { pickRandomBoss, scaleBossForPlayer } from "@/lib/mew-bosses"
 
 type TabKey = "collection" | "deck" | "boosters" | "battle" | "help"
+type BattleStage = "idle" | "preparing" | "fighting" | "completed"
 
 function AuthScreen() {
   const { signIn, signUp, enterGuestMode, error } = useAuth()
   const { t } = useMewI18n()
+  const [showForm, setShowForm] = useState(false)
   const [mode, setMode] = useState<"signin" | "signup">("signin")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [nickname, setNickname] = useState("")
   const [busy, setBusy] = useState(false)
+
+  const nicknameValid = nickname.trim().length >= 1 && nickname.trim().length <= 10
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
+    if (mode === "signup" && !nicknameValid) return
     setBusy(true)
     try {
       if (mode === "signin") {
         await signIn(email.trim(), password)
       } else {
-        await signUp(email.trim(), password)
+        await signUp(email.trim(), password, nickname.trim())
       }
     } catch {
       // Error message is already set in auth context.
@@ -63,8 +78,10 @@ function AuthScreen() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <Card className="w-full max-w-sm p-4 space-y-3">
+    <div className="relative min-h-screen overflow-hidden bg-background">
+      <PreAuthUkiyoeSplash onEnter={() => setShowForm(true)} />
+      <div className={`relative z-10 min-h-screen flex items-center justify-center p-4 transition-all duration-500 ${showForm ? "opacity-100" : "pointer-events-none opacity-0"}`}>
+      <Card className="w-full max-w-sm p-4 space-y-3 border-amber-300/30 bg-card/92 backdrop-blur-sm shadow-2xl shadow-black/45">
         <div className="flex items-center justify-between gap-2">
           <div>
             <h1 className="text-2xl font-bold">{t.appTitle}</h1>
@@ -75,8 +92,21 @@ function AuthScreen() {
         <form className="space-y-2" onSubmit={submit}>
           <Input type="email" placeholder={t.email} value={email} onChange={(e) => setEmail(e.target.value)} />
           <Input type="password" placeholder={t.password} value={password} onChange={(e) => setPassword(e.target.value)} />
+          {mode === "signup" && (
+            <div className="space-y-1">
+              <Input
+                placeholder={`${t.nickname} (макс. 10)`}
+                value={nickname}
+                maxLength={10}
+                onChange={(e) => setNickname(e.target.value)}
+              />
+              {nickname.length > 0 && !nicknameValid && (
+                <p className="text-xs text-destructive">1–10 символов</p>
+              )}
+            </div>
+          )}
           {error && <p className="text-xs text-destructive">{error}</p>}
-          <Button className="w-full" type="submit" disabled={busy || !email || !password}>
+          <Button className="w-full" type="submit" disabled={busy || !email || !password || (mode === "signup" && !nicknameValid)}>
             {busy ? t.pleaseWait : mode === "signin" ? t.signIn : t.signUp}
           </Button>
         </form>
@@ -85,6 +115,7 @@ function AuthScreen() {
         </Button>
         <Button variant="ghost" className="w-full" onClick={enterGuestMode}>{t.continueAsGuest}</Button>
       </Card>
+      </div>
     </div>
   )
 }
@@ -97,31 +128,44 @@ export default function MewBattlePage() {
   const [userCards, setUserCards] = useState<UserCard[]>([])
   const [decks, setDecks] = useState<Deck[]>([])
   const [selectedDeckSlot, setSelectedDeckSlot] = useState<DeckSlotKey>("deck1")
-  const [selectedBattleDeckName, setSelectedBattleDeckName] = useState<string>("Main Deck")
-  const [activeBattleDeckName, setActiveBattleDeckName] = useState<string | null>(null)
+  const [battleStage, setBattleStage] = useState<BattleStage>("idle")
+  const [battleBoss, setBattleBoss] = useState<FighterCard | null>(null)
+  const [battleDeckSlot, setBattleDeckSlot] = useState<DeckSlotKey | null>(null)
+  const [previewDeckSlot, setPreviewDeckSlot] = useState<DeckSlotKey | null>(null)
+  const [battleSessionId, setBattleSessionId] = useState(0)
+  const [lastBattleBossId, setLastBattleBossId] = useState<string | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [battleHistory, setBattleHistory] = useState<UserBattleLog[]>([])
   const [loadingData, setLoadingData] = useState(true)
   const [message, setMessage] = useState<string | null>(null)
   const [sellingCardId, setSellingCardId] = useState<string | null>(null)
+  const [recentlyDroppedCounts, setRecentlyDroppedCounts] = useState<Map<string, number>>(new Map())
+  const [pendingBattleWinReward, setPendingBattleWinReward] = useState<number>(50)
+  const [showBankruptcyWarning, setShowBankruptcyWarning] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const [showResetDialog, setShowResetDialog] = useState(false)
+  const [showLeaderboard, setShowLeaderboard] = useState(false)
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false)
 
   const userId = user?.uid ?? null
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (showSpinner = true) => {
     if (!userId) {
       setLoadingData(false)
       return
     }
 
-    setLoadingData(true)
+    if (showSpinner) {
+      setLoadingData(true)
+    }
     try {
+      await ensureDefaultDeckSlots(userId)
+
       const [allCards, owned, loadedDecks, userProfile, battles] = await Promise.all([
         fetchCards(),
         fetchUserCards(userId),
-        (async () => {
-          await ensureDefaultDeckSlots(userId)
-          return fetchUserDecks(userId)
-        })(),
+        fetchUserDecks(userId),
         fetchUserProfile(userId),
         fetchUserBattleLogs(userId, 24),
       ])
@@ -137,20 +181,15 @@ export default function MewBattlePage() {
         }
       })
 
-      const selectedDeckName = (orderedBySlot.find((deck) => deck.slot === selectedDeckSlot)?.deckName) ?? orderedBySlot[0].deckName
-      const preferredDeck = orderedBySlot.find((deck) => deck.deckName === selectedDeckName) ?? orderedBySlot[0]
-      const preferredBattleDeck = orderedBySlot.find((deck) => deck.deckName === selectedBattleDeckName) ?? preferredDeck
-
       setCards(allCards)
       setUserCards(owned)
       setDecks(orderedBySlot)
-      setSelectedBattleDeckName(preferredBattleDeck.deckName)
       setProfile(userProfile)
       setBattleHistory(battles)
     } finally {
       setLoadingData(false)
     }
-  }, [selectedBattleDeckName, selectedDeckSlot, userId])
+  }, [userId])
 
   useEffect(() => {
     if (!loading && userId) {
@@ -163,31 +202,40 @@ export default function MewBattlePage() {
     [decks, selectedDeckSlot],
   )
 
-  const selectedBattleDeck = useMemo(
-    () => decks.find((deck) => deck.deckName === selectedBattleDeckName) ?? decks[0] ?? null,
-    [decks, selectedBattleDeckName],
-  )
-
   const handleSaveDeck = useCallback(async (name: string, cardIds: string[]) => {
     if (!userId) return
-    await saveDeckToSlot(userId, selectedDeckSlot, name, cardIds)
-    setSelectedBattleDeckName(name)
+    await saveDeckToSlot(userId, selectedDeckSlot, name, cardIds, profile?.maxDeckSize ?? 3)
     await loadData()
     setMessage(t.deckSaved)
-  }, [loadData, selectedDeckSlot, t.deckSaved, userId])
+  }, [loadData, profile?.maxDeckSize, selectedDeckSlot, t.deckSaved, userId])
 
   const handleOpenBooster = useCallback(async (offerId: BoosterOffer["id"]) => {
-    if (!userId) return []
+    if (!userId) {
+      return {
+        cards: [],
+        unlockedDeckSlot: false,
+      } satisfies BoosterOpenResult
+    }
     try {
       const offer = BOOSTER_OFFERS.find((candidate) => candidate.id === offerId)
       const allCards = cards.length > 0 ? cards : await fetchCards()
-      const dropped = await openBoosterWithOffer(userId, allCards, offerId, 5)
-      await loadData()
-      setMessage(`${t.openBooster}: -${offer?.cost ?? 0}`)
-      return dropped
+      const result = await openBoosterWithOffer(userId, allCards, offerId, 2)
+      const counts = new Map<string, number>()
+      result.cards.forEach((card) => {
+        counts.set(card.id, (counts.get(card.id) ?? 0) + 1)
+      })
+      setRecentlyDroppedCounts(counts)
+      await loadData(false)
+      setMessage(
+        `${t.openBooster}: -${offer?.cost ?? 0} · выпало ${result.cards.length} карт${result.unlockedDeckSlot ? " · +слот колоды" : ""}`,
+      )
+      return result
     } catch {
       setMessage("Not enough coins or Firestore permissions are missing")
-      return []
+      return {
+        cards: [],
+        unlockedDeckSlot: false,
+      }
     }
   }, [cards, loadData, t.openBooster, userId])
 
@@ -265,43 +313,188 @@ export default function MewBattlePage() {
       .map((id) => cards.find((c) => c.id === id))
       .filter((card): card is MewCard => !!card)
       .filter((card) => ownedSet.has(card.id))
-  }, [cards, selectedDeck, userCards])
+      .slice(0, profile?.maxDeckSize ?? 3)
+  }, [cards, profile?.maxDeckSize, selectedDeck, userCards])
 
-  const battleDeckCards = useMemo(() => {
-    const sourceDeck = activeBattleDeckName
-      ? decks.find((deck) => deck.deckName === activeBattleDeckName) ?? selectedBattleDeck
-      : selectedBattleDeck
+  const ownedCardIds = useMemo(() => new Set(userCards.filter((c) => c.quantity > 0).map((c) => c.cardId)), [userCards])
 
-    if (!sourceDeck) return []
+  const cardsById = useMemo(() => new Map(cards.map((card) => [card.id, card])), [cards])
 
-    const ownedSet = new Set(userCards.filter((c) => c.quantity > 0).map((c) => c.cardId))
-    const preferred = sourceDeck.cards
-      .map((id) => cards.find((c) => c.id === id))
-      .filter((card): card is MewCard => !!card)
-      .filter((card) => ownedSet.has(card.id))
+  const decksBySlot = useMemo(() => {
+    const map = new Map<DeckSlotKey, Deck>()
+    for (const deck of decks) {
+      if (!deck.slot) continue
+      map.set(deck.slot, deck)
+    }
+    return map
+  }, [decks])
 
-    return preferred.slice(0, 5)
-  }, [activeBattleDeckName, cards, decks, selectedBattleDeck, userCards])
+  const battleDeckCardsBySlot = useMemo(() => {
+    const result = new Map<DeckSlotKey, MewCard[]>()
+    for (const slot of DECK_SLOT_KEYS) {
+      const deck = decksBySlot.get(slot)
+      const prepared = (deck?.cards ?? [])
+        .map((id) => cardsById.get(id))
+        .filter((card): card is MewCard => !!card)
+        .filter((card) => ownedCardIds.has(card.id))
+        .slice(0, profile?.maxDeckSize ?? 3)
+      result.set(slot, prepared)
+    }
+    return result
+  }, [cardsById, decksBySlot, ownedCardIds, profile?.maxDeckSize])
 
-  const saveBattle = useCallback(async (winnerId: string, log: BattleLogEntry[]) => {
+  const activeBattleDeckCards = useMemo(() => {
+    if (!battleDeckSlot) return []
+    return battleDeckCardsBySlot.get(battleDeckSlot) ?? []
+  }, [battleDeckSlot, battleDeckCardsBySlot])
+
+  const activeBattleDeckName = useMemo(() => {
+    if (!battleDeckSlot) return null
+    return decksBySlot.get(battleDeckSlot)?.deckName ?? getDefaultDeckName(battleDeckSlot)
+  }, [battleDeckSlot, decksBySlot])
+
+  const previewDeckCards = useMemo(() => {
+    if (!battleDeckSlot) return []
+    return battleDeckCardsBySlot.get(battleDeckSlot) ?? []
+  }, [battleDeckCardsBySlot, battleDeckSlot])
+
+  const deckPowerBySlot = useMemo(() => {
+    const scoreCard = (card: MewCard) => {
+      const rarityScore = card.rarity === "legendary" ? 18 : card.rarity === "epic" ? 12 : card.rarity === "rare" ? 7 : 3
+      return card.attack + card.health * 0.55 + rarityScore
+    }
+
+    const map = new Map<DeckSlotKey, number>()
+    for (const slot of DECK_SLOT_KEYS) {
+      const deckCards = battleDeckCardsBySlot.get(slot) ?? []
+      const score = deckCards.reduce((sum, card) => sum + scoreCard(card), 0)
+      map.set(slot, score)
+    }
+    return map
+  }, [battleDeckCardsBySlot])
+
+  const battleRewardRange = useMemo(() => {
+    if (!battleDeckSlot) return { min: 50, max: 50 }
+    const selectedScore = deckPowerBySlot.get(battleDeckSlot) ?? 0
+    const scores = DECK_SLOT_KEYS
+      .map((slot) => deckPowerBySlot.get(slot) ?? 0)
+      .filter((score) => score > 0)
+
+    if (scores.length === 0 || selectedScore <= 0) return { min: 200, max: 200 }
+
+    const minScore = Math.min(...scores)
+    const maxScore = Math.max(...scores)
+    const span = maxScore - minScore
+    // Слабейшая колода (minScore) → 200, сильнейшая (maxScore) → 50 (линейно)
+    // span === 0 (все равны) → 0.5 → 125 (среднее)
+    const normalized = span > 0 ? (selectedScore - minScore) / span : 0.5
+    const reward = Math.round(200 - normalized * 150)
+    return { min: Math.max(50, Math.min(200, reward)), max: Math.max(50, Math.min(200, reward)) }
+  }, [battleDeckSlot, deckPowerBySlot])
+
+  const saveBattle = useCallback(async (winnerId: string, bossId: string, log: BattleLogEntry[]) => {
     if (!userId) return
 
-    const turns = log.reduce((max, entry) => Math.max(max, entry.turn), 0)
     const didWin = winnerId === "player"
-    const reward = await awardBattleCoins(userId, didWin, turns)
+    const reward = didWin ? pendingBattleWinReward : 0
+    const settled = await awardBattleCoins(userId, didWin, reward)
 
     await saveBattleLog({
       player1Id: userId,
-      bossId: "evil_raven",
+      bossId,
       winnerId,
-      rewardCoins: reward,
+      rewardCoins: settled,
       log,
       createdAt: Date.now(),
     })
 
     await loadData()
-    setMessage(`${didWin ? t.battleSavedWin : t.battleSavedLoss}: +${reward}`)
-  }, [loadData, t.battleSavedLoss, t.battleSavedWin, userId])
+    setMessage(`${didWin ? t.battleSavedWin : t.battleSavedLoss}: +${settled}`)
+  }, [loadData, pendingBattleWinReward, t.battleSavedLoss, t.battleSavedWin, userId])
+
+  const playerPower = useMemo(() => {
+    if (!profile) return 0
+    const winsFactor = profile.wins / 9
+    const streakFactor = profile.streak / 3
+    const economyFactor = Math.log10(Math.max(1, profile.totalEarned + 1))
+    return Math.max(0, Math.min(10, winsFactor + streakFactor + economyFactor - 1))
+  }, [profile])
+
+  const battleLocked = battleStage === "preparing" || battleStage === "fighting"
+
+  // Банкротство: следим за профилем и картами, показываем предупреждение когда бой завершён
+  useEffect(() => {
+    if (!profile || loadingData) return
+    if (battleStage !== "idle") return
+    const canAfford = profile.coins >= BATTLE_ENTRY_COST
+    const canSell = userCards.some((c) => c.quantity > 1)
+    setShowBankruptcyWarning(!canAfford && !canSell)
+  }, [profile, userCards, battleStage, loadingData])
+
+  const handleReset = useCallback(async () => {
+    if (!userId) return
+    setResetting(true)
+    try {
+      await resetUserToInitialState(userId)
+      setShowBankruptcyWarning(false)
+      setBattleStage("idle")
+      setBattleBoss(null)
+      setBattleDeckSlot(null)
+      setPreviewDeckSlot(null)
+      setRecentlyDroppedCounts(new Map())
+      setMessage(null)
+      await loadData()
+    } finally {
+      setResetting(false)
+    }
+  }, [loadData, userId])
+
+  const loadLeaderboard = useCallback(async () => {
+    setLeaderboardLoading(true)
+    try {
+      const entries = await fetchLeaderboard(25)
+      setLeaderboard(entries)
+    } finally {
+      setLeaderboardLoading(false)
+    }
+  }, [])
+
+  const handleEnterBattle = () => {
+    const randomBoss = pickRandomBoss(lastBattleBossId ?? undefined)
+    const scaledBoss = scaleBossForPlayer(randomBoss, playerPower)
+
+    setBattleBoss(scaledBoss)
+    setLastBattleBossId(randomBoss.id)
+    setBattleDeckSlot(null)
+    setPreviewDeckSlot(null)
+    setShowBankruptcyWarning(false)
+    setBattleStage("preparing")
+    setBattleSessionId((id) => id + 1)
+    setTab("battle")
+  }
+
+  const handleStartBattle = async () => {
+    if (!userId) return
+    if (!battleDeckSlot) return
+    if ((battleDeckCardsBySlot.get(battleDeckSlot) ?? []).length === 0) return
+    try {
+      await payBattleEntry(userId, BATTLE_ENTRY_COST)
+    } catch {
+      setMessage(`Недостаточно монет: нужно ${BATTLE_ENTRY_COST}`)
+      return
+    }
+    const winReward = Math.floor(Math.random() * (battleRewardRange.max - battleRewardRange.min + 1)) + battleRewardRange.min
+    setPendingBattleWinReward(winReward)
+    await loadData()
+    setBattleStage("fighting")
+  }
+
+  const handleBattleResolved = () => {
+    setBattleStage("idle")
+    setBattleBoss(null)
+    setBattleDeckSlot(null)
+    setPreviewDeckSlot(null)
+  }
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>
@@ -339,9 +532,42 @@ export default function MewBattlePage() {
           </div>
           <div className="flex items-center gap-2">
             {profile && <CoinPawBadge amount={profile.coins} compact />}
-            {user ? <span className="text-xs text-muted-foreground hidden sm:inline">{user.email}</span> : <span className="text-xs text-muted-foreground">Guest</span>}
             <LanguageToggle />
-            <Button size="sm" variant="secondary" onClick={() => signOut()}>Logout</Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="icon" variant="ghost" className="h-8 w-8">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[200px]">
+                <DropdownMenuItem disabled className="cursor-default opacity-90 focus:bg-transparent">
+                  <div className="flex flex-col gap-0.5">
+                    {profile?.nickname && (
+                      <span className="font-semibold text-foreground">{profile.nickname}</span>
+                    )}
+                    <span className="text-xs text-muted-foreground">{user?.email ?? "Guest"}</span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {userId && (
+                  <DropdownMenuItem onSelect={() => { void loadLeaderboard(); setShowLeaderboard(true) }}>
+                    <Trophy className="h-4 w-4" />
+                    {t.leaderboard}
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                {userId && (
+                  <DropdownMenuItem variant="destructive" onSelect={() => setShowResetDialog(true)}>
+                    <RotateCcw className="h-4 w-4" />
+                    {t.resetToInitial}
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onSelect={() => void signOut()}>
+                  <LogOut className="h-4 w-4" />
+                  {t.logout}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -355,6 +581,21 @@ export default function MewBattlePage() {
 
         {message && (
           <Card className="p-2 text-sm border-primary/40">{message}</Card>
+        )}
+
+        {showBankruptcyWarning && (
+          <Card className="p-3 border-rose-500/50 bg-rose-500/10 space-y-2">
+            <p className="text-sm text-rose-200">{t.bankruptcyWarning}</p>
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={resetting}
+              onClick={handleReset}
+              className="w-full"
+            >
+              {resetting ? "..." : t.bankruptcyReset}
+            </Button>
+          </Card>
         )}
 
         {profile && (
@@ -458,7 +699,11 @@ export default function MewBattlePage() {
                 key={item.key}
                 variant={tab === item.key ? "default" : "outline"}
                 size="sm"
-                onClick={() => setTab(item.key)}
+                onClick={() => {
+                  if (battleLocked && item.key !== "battle") return
+                  setTab(item.key)
+                }}
+                disabled={battleLocked && item.key !== "battle"}
                 className={`rounded-full px-2.5 h-8 gap-1.5 ${tab === item.key ? "" : item.tone}`}
               >
                 <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-black/10">
@@ -478,6 +723,7 @@ export default function MewBattlePage() {
               <CardCollection
                 cards={cards}
                 userCards={userCards}
+                recentlyAddedCardCounts={recentlyDroppedCounts}
                 onSellCard={handleSellCard}
                 sellingCardId={sellingCardId}
                 getSellPrice={getCardSellPrice}
@@ -487,6 +733,7 @@ export default function MewBattlePage() {
               <DeckBuilder
                 cards={cards}
                 userCards={userCards}
+                maxDeckSize={profile?.maxDeckSize ?? 3}
                 deckButtons={[
                   { slot: "deck1", label: t.deckOne },
                   { slot: "deck2", label: t.deckTwo },
@@ -507,36 +754,99 @@ export default function MewBattlePage() {
                 <Card className="p-4 space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <h2 className="text-lg font-semibold">{t.chooseBattleDeck}</h2>
-                      <p className="text-sm text-muted-foreground">{t.selectedBattleDeck}: {selectedBattleDeckName}</p>
+                      <h2 className="text-lg font-semibold">{t.battleArena}</h2>
+                      <p className="text-sm text-muted-foreground">
+                        {battleLocked
+                          ? "Бой запущен: выйти можно только после завершения."
+                          : "Нажмите «Вступаем в бой», чтобы получить случайного босса."}
+                      </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={selectedBattleDeckName}
-                        onChange={(event) => {
-                          setSelectedBattleDeckName(event.target.value)
-                          setActiveBattleDeckName(null)
-                        }}
-                        className="h-9 rounded-full border border-border bg-background px-3 text-sm"
-                      >
-                        {decks.map((deck) => (
-                          <option key={deck.id} value={deck.deckName}>{deck.deckName}</option>
-                        ))}
-                      </select>
-                      <Button size="sm" className="rounded-full" onClick={() => setActiveBattleDeckName(selectedBattleDeckName)} disabled={battleDeckCards.length === 0}>
-                        <Play className="h-3.5 w-3.5" />
-                        {t.startBattle}
-                      </Button>
-                    </div>
+                    <Button
+                      size="sm"
+                      className="rounded-full"
+                      onClick={handleEnterBattle}
+                      disabled={battleLocked}
+                    >
+                      <Play className="h-3.5 w-3.5" />
+                      Вступаем в бой
+                    </Button>
                   </div>
-                  {battleDeckCards.length === 0 && <p className="text-sm text-muted-foreground">{t.noDeckForBattle}</p>}
+
+                  {battleStage === "preparing" && battleBoss && (
+                    <div className="space-y-3">
+                      <div className="flex justify-center">
+                        <BattleFighterCard
+                          fighter={battleBoss}
+                          role="boss"
+                          isDead={false}
+                          className="w-[170px]"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">{t.chooseBattleDeck}</p>
+                        <div className="space-y-2">
+                          {DECK_SLOT_KEYS.map((slotKey) => {
+                            const slotDeck = decksBySlot.get(slotKey)
+                            const availableCards = battleDeckCardsBySlot.get(slotKey)?.length ?? 0
+                            const isSelected = battleDeckSlot === slotKey
+                            return (
+                              <div key={slotKey} className="space-y-1">
+                                <Button
+                                  size="sm"
+                                  variant={isSelected ? "default" : "outline"}
+                                  className="rounded-full"
+                                  disabled={availableCards === 0}
+                                  onClick={() => setBattleDeckSlot((prev) => prev === slotKey ? null : slotKey)}
+                                >
+                                  {(slotDeck?.deckName ?? getDefaultDeckName(slotKey))} ({availableCards})
+                                </Button>
+                                {isSelected && previewDeckCards.length > 0 && (
+                                  <div className="flex flex-wrap gap-1.5 rounded-xl border border-border/60 bg-card/40 p-2">
+                                    {previewDeckCards.map((card) => (
+                                      <MewCardFace key={`preview-${slotKey}-${card.id}`} card={card} compact className="max-w-[130px]" />
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+
+                        {battleDeckSlot && (battleDeckCardsBySlot.get(battleDeckSlot)?.length ?? 0) > 0 && (
+                          <div className="space-y-0.5">
+                            <p className="text-sm text-muted-foreground">
+                              Вход: {BATTLE_ENTRY_COST} монет · Выигрыш при победе: {battleRewardRange.min}
+                            </p>
+                            <p className="text-xs text-muted-foreground/60">{t.rewardInverseTip}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex justify-end">
+                        <Button
+                          size="sm"
+                          className="rounded-full"
+                          onClick={handleStartBattle}
+                          disabled={!battleDeckSlot || (battleDeckCardsBySlot.get(battleDeckSlot)?.length ?? 0) === 0}
+                        >
+                          <Play className="h-3.5 w-3.5" />
+                          {t.startBattle}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </Card>
-                {activeBattleDeckName && battleDeckCards.length > 0 && (
+
+                {battleStage === "fighting" && battleBoss && battleDeckSlot && activeBattleDeckCards.length > 0 && (
                   <BattleArena
-                    key={activeBattleDeckName}
-                    deckCards={battleDeckCards}
+                    key={`${battleSessionId}-${battleBoss.id}-${battleDeckSlot}`}
+                    deckCards={activeBattleDeckCards}
                     onSaveBattle={saveBattle}
-                    deckName={activeBattleDeckName}
+                    deckName={activeBattleDeckName ?? getDefaultDeckName(battleDeckSlot)}
+                    initialBoss={battleBoss}
+                    showResetButton={false}
+                    onBattleResolved={handleBattleResolved}
                   />
                 )}
               </div>
@@ -545,6 +855,73 @@ export default function MewBattlePage() {
           </>
         )}
       </main>
+
+      {/* Reset Dialog */}
+      {userId && (
+        <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+          <DialogContent className="max-w-sm border-rose-500/30 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+            <DialogHeader>
+              <DialogTitle className="text-rose-200">{t.resetConfirmTitle}</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-slate-300/80">{t.resetConfirmDesc}</p>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button size="sm" variant="ghost" onClick={() => setShowResetDialog(false)}>Отмена</Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                disabled={resetting}
+                onClick={async () => { await handleReset(); setShowResetDialog(false) }}
+              >
+                {resetting ? "..." : t.resetToInitial}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Leaderboard Dialog */}
+      <Dialog open={showLeaderboard} onOpenChange={setShowLeaderboard}>
+        <DialogContent className="max-w-lg border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+          <DialogHeader>
+            <DialogTitle className='font-["Trebuchet_MS","Verdana",sans-serif] text-amber-100'>{t.leaderboardTitle}</DialogTitle>
+          </DialogHeader>
+          {leaderboardLoading ? (
+            <p className="text-sm text-muted-foreground">{t.loadingData}</p>
+          ) : leaderboard.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t.leaderboardEmpty}</p>
+          ) : (
+            <div className="overflow-auto max-h-[60vh]">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/40 text-xs text-muted-foreground">
+                    <th className="py-1 text-left font-medium">#</th>
+                    <th className="py-1 text-left font-medium">{t.lbColNickname}</th>
+                    <th className="py-1 text-right font-medium">{t.lbColScore}</th>
+                    <th className="py-1 text-right font-medium">{t.lbColCards}</th>
+                    <th className="py-1 text-right font-medium">{t.lbColDate}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leaderboard.map((entry, idx) => (
+                    <tr
+                      key={entry.userId}
+                      className={`border-b border-border/20 ${entry.userId === userId ? "font-semibold text-amber-300" : ""}`}
+                    >
+                      <td className="py-1 text-muted-foreground">{idx + 1}</td>
+                      <td className="py-1">{entry.nickname}</td>
+                      <td className="py-1 text-right">{entry.totalEarned}</td>
+                      <td className="py-1 text-right">{entry.cardCount}</td>
+                      <td className="py-1 text-right text-xs text-muted-foreground">
+                        {entry.updatedAtMs ? new Date(entry.updatedAtMs).toLocaleDateString() : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -1,16 +1,18 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import type { MewCard } from "@/lib/mew-types"
 import { MewCardFace } from "@/components/mew/mew-card-face"
 import { CoinPawBadge } from "@/components/mew/coin-paw-badge"
 import { useMewI18n } from "@/lib/mew-i18n"
-import type { BoosterOffer } from "@/lib/mew-firestore"
+import type { BoosterOffer, BoosterOpenResult } from "@/lib/mew-firestore"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 interface BoosterShopProps {
   offers: BoosterOffer[]
-  onOpen: (offerId: BoosterOffer["id"]) => Promise<MewCard[]>
+  onOpen: (offerId: BoosterOffer["id"]) => Promise<BoosterOpenResult>
 }
 
 const RARITY_LABEL: Array<"common" | "rare" | "epic" | "legendary"> = ["common", "rare", "epic", "legendary"]
@@ -22,6 +24,8 @@ export function BoosterShop({ offers, onOpen }: BoosterShopProps) {
   const [opening, setOpening] = useState(false)
   const [openingOfferId, setOpeningOfferId] = useState<BoosterOffer["id"] | null>(null)
   const [cards, setCards] = useState<MewCard[]>([])
+  const [unlockedDeckSlot, setUnlockedDeckSlot] = useState(false)
+  const [showResultModal, setShowResultModal] = useState(false)
 
   const selectedOffer = offers.find((offer) => offer.id === selectedOfferId) ?? offers[0]
   const lastOpenedOffer = offers.find((offer) => offer.id === lastOpenedOfferId)
@@ -36,9 +40,11 @@ export function BoosterShop({ offers, onOpen }: BoosterShopProps) {
     setOpening(true)
     setOpeningOfferId(offerId)
     try {
-      const pulled = await onOpen(offerId)
-      setCards(pulled)
+      const result = await onOpen(offerId)
+      setCards(result.cards)
+      setUnlockedDeckSlot(result.unlockedDeckSlot)
       setLastOpenedOfferId(offerId)
+      setShowResultModal(true)
     } finally {
       setOpening(false)
       setOpeningOfferId(null)
@@ -88,21 +94,53 @@ export function BoosterShop({ offers, onOpen }: BoosterShopProps) {
         })}
       </div>
 
-      {cards.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-sm text-muted-foreground">{t.latestDrop}{lastOpenedOffer ? ` - ${lastOpenedOffer.title}` : ""}</p>
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 justify-items-center">
-            {cards.map((card, idx) => (
-              <MewCardFace
-                key={`${card.id}-${idx}`}
-                card={card}
-                compact
-                className="max-w-[210px] animate-in fade-in slide-in-from-bottom-2 duration-300"
-              />
-            ))}
+      <Dialog open={showResultModal} onOpenChange={setShowResultModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {t.latestDrop}
+              {lastOpenedOffer ? ` - ${lastOpenedOffer.title}` : ""}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            {unlockedDeckSlot ? (
+              <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-center">
+                <Image
+                  src="/ui/sakura-bloom.svg"
+                  alt="Deck slot unlocked"
+                  width={240}
+                  height={160}
+                  className="mx-auto h-auto w-full max-w-[240px]"
+                />
+                <p className="mt-2 text-sm font-medium text-emerald-100">Поздравляем! Открылся 4-й слот колоды.</p>
+              </div>
+            ) : cards.length > 0 ? (
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 justify-items-center">
+                {cards.map((card, idx) => (
+                  <MewCardFace
+                    key={`${card.id}-${idx}`}
+                    card={card}
+                    compact
+                    className="max-w-[210px] animate-in fade-in slide-in-from-bottom-2 duration-300"
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-border/70 bg-card/60 p-3 text-center">
+                <Image
+                  src="/ui/sakura-dry.svg"
+                  alt="No cards"
+                  width={240}
+                  height={160}
+                  className="mx-auto h-auto w-full max-w-[240px]"
+                />
+                <p className="mt-2 text-sm text-muted-foreground">В этом бустере карты не выпали.</p>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

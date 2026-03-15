@@ -1,4 +1,10 @@
 export type CardRarity = "common" | "rare" | "epic" | "legendary"
+export type BossType = "raven" | "dog" | "rat"
+
+export interface BossAffinity {
+  bossType: BossType
+  level: number
+}
 
 export interface MewCard {
   id: string
@@ -8,6 +14,8 @@ export interface MewCard {
   rarity: CardRarity
   imageUrl: string
   ability: string
+  lore?: string
+  bossAffinities?: BossAffinity[]
 }
 
 export interface UserCard {
@@ -28,12 +36,16 @@ export interface Deck {
 
 export interface UserProfile {
   userId: string
+  nickname?: string
   coins: number
+  maxDeckSize?: number
   wins: number
   losses: number
   streak: number
   totalEarned: number
   totalSpent: number
+  cardCount?: number
+  updatedAtMs?: number
 }
 
 export interface BattleLogEntry {
@@ -55,12 +67,16 @@ export interface BattleLogDoc {
 
 export interface FighterCard {
   id: string
+  entityType?: "cat" | "boss"
   name: string
   attack: number
   health: number
   currentHealth: number
   ability: string
   imageUrl?: string
+  lore?: string
+  bossType?: BossType
+  bossAffinities?: BossAffinity[]
 }
 
 export interface AbilityProcs {
