@@ -10,13 +10,13 @@ const geist = Geist({ subsets: ["latin"], variable: "--font-geist" })
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" })
 
 export const metadata: Metadata = {
-  title: "DartMaster Pro - Multiplayer Darts Scorer",
-  description: "Real-time scoring for darts games with support for 301 and 501 game types",
+  title: "MewBattle - Card RPG Arena",
+  description: "Collect cat cards, build decks, open boosters and battle bosses",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "DartMaster",
+    title: "MewBattle",
   },
   other: {
     "mobile-web-app-capable": "yes",
