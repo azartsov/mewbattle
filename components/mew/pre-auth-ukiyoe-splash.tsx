@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { LanguageToggle } from "@/components/mew/language-toggle"
@@ -11,10 +11,6 @@ import type { FighterCard } from "@/lib/mew-types"
 interface PreAuthUkiyoeSplashProps {
   onEnter: () => void
 }
-
-const MUSIC_VOLUME_STORAGE_KEY = "mewbattleSplashMusicVolume"
-const DEFAULT_SPLASH_VOLUME = 68
-const MAX_MASTER_GAIN = 0.22
 
 const PETALS = Array.from({ length: 22 }, (_, i) => ({
   id: i,
@@ -33,166 +29,13 @@ const BLOSSOM_POSITIONS: [number, number][] = [
 export function PreAuthUkiyoeSplash({ onEnter }: PreAuthUkiyoeSplashProps) {
   const { t } = useMewI18n()
   const [boss, setBoss] = useState<FighterCard>(BOSS_FIGHTERS[0])
-  const [musicVolume, setMusicVolume] = useState(DEFAULT_SPLASH_VOLUME)
-  const [musicPrefLoaded, setMusicPrefLoaded] = useState(false)
-  const audioCtxRef = useRef<AudioContext | null>(null)
-  const musicTimerRef = useRef<number | null>(null)
-  const droneRef = useRef<{ osc: OscillatorNode; gain: GainNode } | null>(null)
-  const masterGainRef = useRef<GainNode | null>(null)
-
-  const gainFromVolume = useCallback((volume: number) => {
-    if (volume <= 0) return 0.0001
-    const normalized = Math.max(0, Math.min(1, volume / 100))
-    return Math.pow(normalized, 1.15) * MAX_MASTER_GAIN
-  }, [])
-
-  const stopMusic = useCallback(() => {
-    if (musicTimerRef.current !== null) {
-      window.clearInterval(musicTimerRef.current)
-      musicTimerRef.current = null
-    }
-
-    if (droneRef.current) {
-      const now = audioCtxRef.current?.currentTime ?? 0
-      droneRef.current.gain.gain.cancelScheduledValues(now)
-      droneRef.current.gain.gain.setValueAtTime(droneRef.current.gain.gain.value, now)
-      droneRef.current.gain.gain.linearRampToValueAtTime(0.0001, now + 0.2)
-      droneRef.current.osc.stop(now + 0.22)
-      droneRef.current = null
-    }
-
-    if (audioCtxRef.current) {
-      audioCtxRef.current.close().catch(() => undefined)
-      audioCtxRef.current = null
-    }
-
-    masterGainRef.current = null
-  }, [])
-
-  const startMusic = useCallback((volume = musicVolume) => {
-    if (typeof window === "undefined") return
-
-    if (audioCtxRef.current && masterGainRef.current) {
-      const now = audioCtxRef.current.currentTime
-      masterGainRef.current.gain.cancelScheduledValues(now)
-      masterGainRef.current.gain.setValueAtTime(masterGainRef.current.gain.value, now)
-      masterGainRef.current.gain.linearRampToValueAtTime(gainFromVolume(volume), now + 0.12)
-      return
-    }
-
-    const AudioCtx = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-    if (!AudioCtx) return
-
-    const ctx = new AudioCtx()
-    audioCtxRef.current = ctx
-
-    const masterGain = ctx.createGain()
-    masterGain.gain.value = gainFromVolume(volume)
-    masterGain.connect(ctx.destination)
-    masterGainRef.current = masterGain
-
-    // Low sustained drone to make the ambience fuller but still quiet.
-    const droneOsc = ctx.createOscillator()
-    const droneGain = ctx.createGain()
-    droneOsc.type = "sine"
-    droneOsc.frequency.value = 110
-    droneGain.gain.value = 0.009
-    droneOsc.connect(droneGain)
-    droneGain.connect(masterGain)
-    droneOsc.start()
-    droneRef.current = { osc: droneOsc, gain: droneGain }
-
-    const notes = [220, 247, 294, 330, 392, 440]
-    let step = 0
-
-    const playNote = () => {
-      const now = ctx.currentTime
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-
-      osc.type = "triangle"
-      osc.frequency.value = notes[step % notes.length]
-      step += 1
-
-      gain.gain.setValueAtTime(0.0001, now)
-      gain.gain.exponentialRampToValueAtTime(0.022, now + 0.04)
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5)
-
-      osc.connect(gain)
-      gain.connect(masterGain)
-      osc.start(now)
-      osc.stop(now + 0.52)
-    }
-
-    playNote()
-    musicTimerRef.current = window.setInterval(playNote, 580)
-  }, [gainFromVolume, musicVolume])
-
-  const ensureMusicActive = useCallback(() => {
-    if (musicVolume <= 0) return
-    startMusic(musicVolume)
-    if (audioCtxRef.current?.state === "suspended") {
-      audioCtxRef.current.resume().catch(() => undefined)
-    }
-  }, [musicVolume, startMusic])
-
-  const handleVolumeChange = useCallback((nextVolume: number) => {
-    const safeVolume = Math.max(0, Math.min(100, nextVolume))
-    setMusicVolume(safeVolume)
-
-    if (typeof window !== "undefined") {
-      localStorage.setItem(MUSIC_VOLUME_STORAGE_KEY, String(safeVolume))
-    }
-
-    if (safeVolume <= 0) {
-      stopMusic()
-      return
-    }
-
-    startMusic(safeVolume)
-    if (audioCtxRef.current?.state === "suspended") {
-      audioCtxRef.current.resume().catch(() => undefined)
-    }
-  }, [startMusic, stopMusic])
 
   useEffect(() => {
     setBoss(BOSS_FIGHTERS[Math.floor(Math.random() * BOSS_FIGHTERS.length)])
   }, [])
 
-  useEffect(() => {
-    const stored = typeof window !== "undefined" ? localStorage.getItem(MUSIC_VOLUME_STORAGE_KEY) : null
-    if (stored !== null) {
-      const parsed = Number(stored)
-      if (Number.isFinite(parsed)) {
-        setMusicVolume(Math.max(0, Math.min(100, Math.round(parsed))))
-      }
-    }
-    setMusicPrefLoaded(true)
-  }, [])
-
-  useEffect(() => {
-    if (!musicPrefLoaded) return
-    if (musicVolume <= 0) {
-      stopMusic()
-      return
-    }
-    startMusic(musicVolume)
-  }, [musicPrefLoaded, musicVolume, startMusic, stopMusic])
-
-  useEffect(() => {
-    const onUserInteraction = () => {
-      ensureMusicActive()
-    }
-
-    window.addEventListener("pointerdown", onUserInteraction, { once: true })
-    return () => {
-      window.removeEventListener("pointerdown", onUserInteraction)
-      stopMusic()
-    }
-  }, [ensureMusicActive, stopMusic])
-
   return (
-    <div className="absolute inset-0 overflow-hidden" onPointerDown={ensureMusicActive}>
+    <div className="absolute inset-0 overflow-hidden">
       <style>{`
         @keyframes petalFall {
           0%   { opacity: 0; transform: translateY(-30px) rotate(0deg) translateX(0px); }
@@ -217,11 +60,15 @@ export function PreAuthUkiyoeSplash({ onEnter }: PreAuthUkiyoeSplashProps) {
           color: transparent;
           font-family: "Hiragino Mincho ProN", "Yu Mincho", "MS Mincho", serif;
           font-weight: 700;
-          letter-spacing: 0.12em;
+          letter-spacing: 0.08em;
+          transform: scaleX(0.82);
+          transform-origin: center;
           text-shadow:
             0 1px 0 rgba(17, 24, 39, 0.62),
             0 2px 6px rgba(17, 24, 39, 0.38),
-            0 0 1px rgba(255, 255, 255, 0.55);
+            0 0 1px rgba(255, 255, 255, 0.55),
+            -1px 0 0 rgba(255, 255, 255, 0.28),
+            1px 0 0 rgba(17, 24, 39, 0.28);
           animation: sakura-title-glow 2.3s ease-in-out infinite;
         }
       `}</style>
@@ -270,7 +117,7 @@ export function PreAuthUkiyoeSplash({ onEnter }: PreAuthUkiyoeSplashProps) {
       {/* Center logo from sakura petals */}
       <div className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center px-4">
         <div className="text-center">
-          <h2 className="sakura-title select-none text-4xl uppercase sm:text-6xl md:text-7xl">
+          <h2 className="sakura-title select-none whitespace-nowrap text-[clamp(1.55rem,8.6vw,4.5rem)] uppercase">
             ＭＥＷＢＡＴＴＬＥ
           </h2>
           <p className="mt-1 text-sm font-semibold tracking-[0.12em] text-amber-100/90 sm:text-base">
@@ -340,26 +187,6 @@ export function PreAuthUkiyoeSplash({ onEnter }: PreAuthUkiyoeSplashProps) {
               className="justify-self-start rounded-2xl border border-white/15 bg-black/20 p-1 shadow-2xl shadow-black/40"
             />
           </div>
-        </div>
-      </div>
-
-      {/* Music control */}
-      <div className="absolute left-4 top-4 z-10">
-        <div className="w-[146px] rounded-lg border border-amber-200/30 bg-black/45 px-2 py-1.5 backdrop-blur-[2px]">
-          <div className="mb-1 flex items-center justify-between text-[10px] text-amber-100">
-            <span>{t.splashMusicVolume}</span>
-            <span>{musicVolume === 0 ? t.splashMuted : `${musicVolume}%`}</span>
-          </div>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            step={1}
-            value={musicVolume}
-            onChange={(event) => handleVolumeChange(Number(event.target.value))}
-            className="h-1 w-full accent-amber-400"
-            aria-label={t.splashMusicVolume}
-          />
         </div>
       </div>
 
