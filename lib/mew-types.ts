@@ -23,6 +23,17 @@ export interface Deck {
   userId: string
   deckName: string
   cards: string[]
+  slot?: "deck1" | "deck2" | "deck3"
+}
+
+export interface UserProfile {
+  userId: string
+  coins: number
+  wins: number
+  losses: number
+  streak: number
+  totalEarned: number
+  totalSpent: number
 }
 
 export interface BattleLogEntry {
@@ -37,6 +48,7 @@ export interface BattleLogDoc {
   player2Id?: string
   bossId?: string
   winnerId: string
+  rewardCoins?: number
   log: BattleLogEntry[]
   createdAt: number
 }
@@ -48,12 +60,14 @@ export interface FighterCard {
   health: number
   currentHealth: number
   ability: string
+  imageUrl?: string
 }
 
 export interface AbilityProcs {
   attackerDoubleHit: boolean
   defenderDodge: boolean
   defenderShield: boolean
+  defenderCounter: boolean
 }
 
 export interface TurnResult {
@@ -63,5 +77,7 @@ export interface TurnResult {
   dodged: boolean
   shielded: boolean
   doubled: boolean
+  countered: boolean
+  counterDamage: number
   text: string
 }

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/lib/auth-context"
-import { useI18n } from "@/lib/i18n/context"
+import { useI18n } from "@/legacy/darts/lib/i18n/context"
 import { Target, LogIn, UserPlus, Loader2 } from "lucide-react"
 
 export function LoginScreen() {

@@ -48,7 +48,7 @@ export function LaunchSplash({ onComplete }: LaunchSplashProps) {
         </svg>
 
         <div className="pointer-events-none text-center">
-          <div className="text-slate-100/95 font-semibold tracking-[0.16em] text-sm uppercase">Darts Scorer</div>
+          <div className="text-slate-100/95 font-semibold tracking-[0.16em] text-sm uppercase">MewBattle</div>
           <div className="text-slate-400/80 text-xs mt-1">v{APP_VERSION}</div>
           <div className="text-slate-300/75 text-xs mt-3">Tap anywhere to continue</div>
         </div>

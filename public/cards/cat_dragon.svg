@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#14532d"/>
+      <stop offset="1" stop-color="#ca8a04"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="180" fill="url(#bg)"/>
+  <circle cx="160" cy="98" r="44" fill="#f1d3b8"/>
+  <polygon points="132,60 145,34 157,62" fill="#f1d3b8"/>
+  <polygon points="163,62 175,34 188,60" fill="#f1d3b8"/>
+  <path d="M124 82 L160 52 L196 82" stroke="#f59e0b" stroke-width="9" fill="none" stroke-linecap="round"/>
+  <path d="M130 66 L116 50 M190 66 L204 50" stroke="#fde68a" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="146" cy="99" r="6" fill="#0f172a"/>
+  <circle cx="174" cy="99" r="6" fill="#0f172a"/>
+  <ellipse cx="160" cy="113" rx="8" ry="4" fill="#ef4444"/>
+  <circle cx="236" cy="52" r="10" fill="#fef3c7" opacity="0.85"/>
+  <rect x="40" y="24" width="114" height="28" rx="14" fill="#422006" opacity="0.92"/>
+  <text x="97" y="43" fill="#fde68a" font-family="Verdana" font-size="14" text-anchor="middle">Cat Dragon</text>
+</svg>

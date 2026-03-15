@@ -1,10 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import type { Player, FinishMode, GameType, TotalLegs } from "@/lib/game-types"
+import type { Player, FinishMode, GameType, TotalLegs } from "@/legacy/darts/lib/game-types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { useI18n } from "@/lib/i18n/context"
+import { useI18n } from "@/legacy/darts/lib/i18n/context"
 import { LanguageSwitcher } from "./language-switcher"
 import { GameStatistics } from "./game-statistics"
 import { StatsModal } from "./stats-modal"

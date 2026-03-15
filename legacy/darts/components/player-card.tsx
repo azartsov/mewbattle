@@ -1,7 +1,7 @@
 "use client"
 
-import { type Player, type FinishMode, type TotalLegs, CHECKOUT_MAP, getSimpleFinishSuggestion } from "@/lib/game-types"
-import { useI18n } from "@/lib/i18n/context"
+import { type Player, type FinishMode, type TotalLegs, CHECKOUT_MAP, getSimpleFinishSuggestion } from "@/legacy/darts/lib/game-types"
+import { useI18n } from "@/legacy/darts/lib/i18n/context"
 import { Card, CardContent } from "@/components/ui/card"
 import { User, History } from "lucide-react"
 

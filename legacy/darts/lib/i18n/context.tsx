@@ -12,7 +12,8 @@ interface I18nContextType {
 
 const I18nContext = createContext<I18nContextType | null>(null)
 
-const STORAGE_KEY = "dartsLang"
+const STORAGE_KEY = "mewbattleLang"
+const LEGACY_STORAGE_KEY = "dartsLang"
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>("en")
@@ -20,7 +21,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   // Initialize language from localStorage or browser preference
   useEffect(() => {
-    const savedLang = localStorage.getItem(STORAGE_KEY) as Language | null
+    const savedLang = (localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY)) as Language | null
     if (savedLang && (savedLang === "en" || savedLang === "ru")) {
       setLanguageState(savedLang)
     } else {

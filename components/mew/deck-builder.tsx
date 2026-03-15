@@ -1,24 +1,49 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import type { MewCard, UserCard } from "@/lib/mew-types"
+import { MewCardFace } from "@/components/mew/mew-card-face"
+import { useMewI18n } from "@/lib/mew-i18n"
+import type { DeckSlotKey } from "@/lib/mew-firestore"
 
 const MAX_DECK_SIZE = 5
 
 interface DeckBuilderProps {
   cards: MewCard[]
   userCards: UserCard[]
+  deckButtons: Array<{ slot: DeckSlotKey; label: string }>
+  selectedDeckSlot: DeckSlotKey
+  initialDeckName: string
   initialDeckCardIds: string[]
+  onSelectDeckSlot: (slot: DeckSlotKey) => void
   onSaveDeck: (name: string, cardIds: string[]) => Promise<void>
 }
 
-export function DeckBuilder({ cards, userCards, initialDeckCardIds, onSaveDeck }: DeckBuilderProps) {
-  const [deckName, setDeckName] = useState("Main Deck")
+export function DeckBuilder({
+  cards,
+  userCards,
+  deckButtons,
+  selectedDeckSlot,
+  initialDeckName,
+  initialDeckCardIds,
+  onSelectDeckSlot,
+  onSaveDeck,
+}: DeckBuilderProps) {
+  const { t } = useMewI18n()
+  const [deckName, setDeckName] = useState(initialDeckName)
   const [deck, setDeck] = useState<string[]>(initialDeckCardIds.slice(0, MAX_DECK_SIZE))
   const [saving, setSaving] = useState(false)
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
 
+  useEffect(() => {
+    setDeckName(initialDeckName)
+    setDeck(initialDeckCardIds.slice(0, MAX_DECK_SIZE))
+    setSelectedCardId(null)
+  }, [initialDeckCardIds, initialDeckName])
+
+  const ownedCardsById = useMemo(() => new Map(userCards.map((c) => [c.cardId, c.quantity])), [userCards])
   const ownedCardIds = useMemo(() => new Set(userCards.filter((c) => c.quantity > 0).map((c) => c.cardId)), [userCards])
   const ownedCards = useMemo(() => cards.filter((c) => ownedCardIds.has(c.id)), [cards, ownedCardIds])
 
@@ -30,6 +55,16 @@ export function DeckBuilder({ cards, userCards, initialDeckCardIds, onSaveDeck }
     setDeck((prev) => {
       const next = [...prev]
       next[slotIndex] = cardId
+      return next.slice(0, MAX_DECK_SIZE)
+    })
+  }
+
+  const handleTapSlot = (slotIndex: number) => {
+    if (!selectedCardId) return
+
+    setDeck((prev) => {
+      const next = [...prev]
+      next[slotIndex] = selectedCardId
       return next.slice(0, MAX_DECK_SIZE)
     })
   }
@@ -46,49 +81,74 @@ export function DeckBuilder({ cards, userCards, initialDeckCardIds, onSaveDeck }
   const deckCards = deck.map((id) => cards.find((c) => c.id === id) ?? null)
 
   return (
-    <div className="grid lg:grid-cols-2 gap-4">
+    <div className="space-y-4">
+      <div className="grid md:grid-cols-2 gap-4 items-start">
       <Card className="p-3 bg-card border-border">
-        <h3 className="font-semibold mb-2">Collection (drag cards)</h3>
-        <div className="space-y-2 max-h-[360px] overflow-auto pr-1">
+        <h3 className="font-semibold mb-2">{t.deckCollectionHint}</h3>
+        <div className="grid grid-cols-2 gap-3 max-h-[520px] overflow-auto pr-1">
           {ownedCards.map((card) => (
             <div
               key={card.id}
               draggable
               onDragStart={(event) => event.dataTransfer.setData("text/plain", card.id)}
-              className="rounded border border-border p-2 bg-secondary/40 cursor-grab active:cursor-grabbing"
+              onClick={() => setSelectedCardId(card.id)}
+              className="cursor-grab active:cursor-grabbing"
             >
-              <p className="text-sm font-medium">{card.name}</p>
-              <p className="text-xs text-muted-foreground">ATK {card.attack} / HP {card.health}</p>
+              <MewCardFace
+                card={card}
+                owned={ownedCardsById.get(card.id) ?? 0}
+                compact
+                className={selectedCardId === card.id ? "ring-2 ring-primary/70 max-w-[175px]" : "max-w-[175px]"}
+              />
             </div>
           ))}
-          {ownedCards.length === 0 && <p className="text-sm text-muted-foreground">Open boosters to get cards.</p>}
+          {ownedCards.length === 0 && <p className="text-sm text-muted-foreground col-span-2">{t.noCardsYet}</p>}
         </div>
       </Card>
 
       <Card className="p-3 bg-card border-border">
-        <h3 className="font-semibold mb-2">My Deck (max {MAX_DECK_SIZE})</h3>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-semibold">{t.myDeck} (max {MAX_DECK_SIZE})</h3>
+          <Button size="sm" className="h-7 rounded-full px-3" onClick={handleSave} disabled={saving || deck.filter(Boolean).length === 0}>
+            {saving ? t.savingDeck : t.saveDeck}
+          </Button>
+        </div>
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {deckButtons.map((deckButton) => (
+            <Button
+              key={deckButton.slot}
+              size="sm"
+              variant={selectedDeckSlot === deckButton.slot ? "default" : "secondary"}
+              className="h-7 rounded-full px-2.5 text-xs"
+              onClick={() => onSelectDeckSlot(deckButton.slot)}
+            >
+              {deckButton.label}
+            </Button>
+          ))}
+        </div>
+        {selectedCardId && (
+          <p className="mb-2 text-xs text-muted-foreground">{t.selectedCard}: {cards.find((c) => c.id === selectedCardId)?.name}. {t.tapSlotToPlace}</p>
+        )}
         <input
           value={deckName}
           onChange={(e) => setDeckName(e.target.value)}
           className="mb-3 w-full rounded border border-border bg-background px-2 py-1 text-sm"
-          placeholder="Deck name"
+          placeholder={t.deckName}
         />
-        <div className="space-y-2">
+        <div className="space-y-3">
           {Array.from({ length: MAX_DECK_SIZE }).map((_, index) => (
             <div
               key={`slot-${index}`}
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => handleDrop(event, index)}
-              className="rounded border border-dashed border-border p-2 min-h-[54px] bg-secondary/20"
+              onClick={() => handleTapSlot(index)}
+              className="rounded-xl border border-dashed border-border p-1.5 min-h-[74px] bg-secondary/20"
             >
               {deckCards[index] ? (
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-sm font-medium">{deckCards[index]?.name}</p>
-                    <p className="text-xs text-muted-foreground">ATK {deckCards[index]?.attack} / HP {deckCards[index]?.health}</p>
-                  </div>
+                <div className="flex items-start justify-between gap-2">
+                  <MewCardFace card={deckCards[index]} compact className="max-w-[130px]" />
                   <Button
-                    size="sm"
+                    size="xs"
                     variant="ghost"
                     onClick={() => setDeck((prev) => {
                       const next = [...prev]
@@ -96,19 +156,17 @@ export function DeckBuilder({ cards, userCards, initialDeckCardIds, onSaveDeck }
                       return next
                     })}
                   >
-                    Remove
+                    {t.remove}
                   </Button>
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground">Drop a cat card here</p>
+                <p className="text-xs text-muted-foreground">{t.emptyDeckSlot}</p>
               )}
             </div>
           ))}
         </div>
-        <Button className="mt-3 w-full" onClick={handleSave} disabled={saving || deck.filter(Boolean).length === 0}>
-          {saving ? "Saving..." : "Save Deck"}
-        </Button>
       </Card>
+      </div>
     </div>
   )
 }

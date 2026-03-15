@@ -2,7 +2,7 @@
 
 import React from "react"
 import { useRef, useState, useCallback, useMemo, useEffect } from "react"
-import { useI18n } from "@/lib/i18n/context"
+import { useI18n } from "@/legacy/darts/lib/i18n/context"
 
 interface InteractiveDartboardProps {
   onDartSelected: (value: number, multiplier: 1 | 2 | 3) => void

@@ -25,7 +25,7 @@ describe("calculateTurn", () => {
     const result = calculateTurn(
       { ...attacker, ability: "" },
       { ...defender, ability: "" },
-      { attackerDoubleHit: false, defenderDodge: false, defenderShield: false },
+      { attackerDoubleHit: false, defenderDodge: false, defenderShield: false, defenderCounter: false },
     )
     expect(result.damage).toBe(20)
     expect(result.defenderHealth).toBe(25)
@@ -36,6 +36,7 @@ describe("calculateTurn", () => {
       attackerDoubleHit: false,
       defenderDodge: true,
       defenderShield: false,
+      defenderCounter: false,
     })
     expect(result.dodged).toBe(true)
     expect(result.damage).toBe(0)
@@ -47,6 +48,7 @@ describe("calculateTurn", () => {
       attackerDoubleHit: true,
       defenderDodge: false,
       defenderShield: false,
+      defenderCounter: false,
     })
     expect(result.doubled).toBe(true)
     expect(result.damage).toBe(40)
@@ -56,9 +58,21 @@ describe("calculateTurn", () => {
     const result = calculateTurn(
       { ...attacker, ability: "" },
       { ...defender, ability: "mage shield" },
-      { attackerDoubleHit: false, defenderDodge: false, defenderShield: true },
+      { attackerDoubleHit: false, defenderDodge: false, defenderShield: true, defenderCounter: false },
     )
     expect(result.shielded).toBe(true)
     expect(result.damage).toBe(12)
+  })
+
+  it("applies counterattack damage", () => {
+    const result = calculateTurn(
+      { ...attacker, ability: "" },
+      { ...defender, ability: "" },
+      { attackerDoubleHit: false, defenderDodge: false, defenderShield: false, defenderCounter: true },
+    )
+
+    expect(result.countered).toBe(true)
+    expect(result.counterDamage).toBe(3)
+    expect(result.attackerHealth).toBe(47)
   })
 })

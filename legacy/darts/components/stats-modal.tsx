@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useCallback, useRef } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { useI18n } from "@/lib/i18n/context"
+import { useI18n } from "@/legacy/darts/lib/i18n/context"
 import {
   fetchUserGames,
   gamesToXml,
@@ -13,7 +13,7 @@ import {
   restoreGames,
   computeEloRatings,
   type SavedGame,
-} from "@/lib/game-firestore"
+} from "@/legacy/darts/lib/game-firestore"
 import {
   DropdownMenu,
   DropdownMenuTrigger,

@@ -1,38 +1,37 @@
-# DartMaster Pro (`darts_scores_17`)
+# MewBattle
 
-Multiplayer darts scorer built with Next.js 16, React 19 and Firebase.
+MewBattle is a turn-based card RPG built with Next.js 16, React 19, and Firebase.
+Players collect cat cards, build decks, open boosters, and fight a boss in a simple battle arena.
 
 ## Stack
 
 - Next.js 16 (App Router, TypeScript)
 - React 19
 - Firebase Auth + Firestore
-- Tailwind + Radix/shadcn UI
-- i18n: English/Russian
+- Tailwind CSS + Radix/shadcn UI
+- Vitest for unit tests
 
-## Quick start
+## Quick Start
 
 ```bash
-. "$HOME/.nvm/nvm.sh"
-nvm use 24
-cd /Users/username/Work/DartsScore/darts_scores_17/my-app
+cd /Users/valeryazartsov/mewbattle
 npm install
 npm run dev
 ```
 
-Open http://localhost:3000.
+Open `http://localhost:3000`.
 
 ## Scripts
 
-- `npm run dev` — start development server
-- `npm run build` — increments app version then builds production bundle
-- `npm run start` — run production server
-- `npm run lint` — run ESLint
-- `npm run test` — run unit tests (Vitest)
+- `npm run dev` - start development server
+- `npm run build` - run tests, bump app version, build production bundle
+- `npm run start` - start production server
+- `npm run lint` - run ESLint
+- `npm run test` - run unit tests (Vitest)
 
-## Environment
+## Environment Variables
 
-Create `.env.local` with Firebase public variables:
+Create `.env.local`:
 
 - `NEXT_PUBLIC_FIREBASE_API_KEY`
 - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
@@ -41,52 +40,52 @@ Create `.env.local` with Firebase public variables:
 - `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
 - `NEXT_PUBLIC_FIREBASE_APP_ID`
 
-## Architecture overview
+Optional:
 
-### Core flow
+- `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID`
 
-The app uses centralized `GameState` and four phases:
+## Architecture
 
-1. `setup`
-2. `playing`
-3. `legFinished`
-4. `finished`
+### Runtime Entry
 
-Main orchestrator: `app/page.tsx`.
+- `app/layout.tsx`: providers, metadata, service worker registration
+- `app/page.tsx`: main app shell with auth screen and tabs
 
-### Core modules
+### Core Domains
 
-- `lib/game-types.ts` — domain types + checkout maps
-- `lib/game-engine.ts` — pure turn-processing engine (`applyTurn`)
-- `lib/game-storage.ts` — `sessionStorage` persistence for in-progress game
-- `lib/game-firestore.tsx` — save/load stats, Elo, backup/restore
-- `lib/auth-context.tsx` — auth and guest mode
-- `lib/i18n/*` — translations and language context
+- `lib/auth-context.tsx`: Firebase auth state, guest mode, auth actions
+- `lib/mew-firestore.ts`: cards/decks/battles Firestore layer + booster draw logic
+- `lib/mew-engine.ts`: battle turn calculation and ability procs
+- `lib/mew-types.ts`: type system for cards, decks, battle logs
 
-### UI structure
+### Main UI
 
-- `components/game-setup.tsx` — match setup
-- `components/game-board.tsx` — active board container
-- `components/scoring-input.tsx` — dart input + projection
-- `components/victory-screen.tsx` — final results
-- `components/leg-transition.tsx` — between legs
-- `components/stats-modal.tsx` — ranking/history/Elo + backup/restore
+- `components/mew/card-collection.tsx`: owned cards overview
+- `components/mew/deck-builder.tsx`: drag-and-drop deck assembly
+- `components/mew/booster-shop.tsx`: booster opening flow
+- `components/mew/battle-arena.tsx`: player-vs-boss battle loop
+
+### Legacy Dart Scoring Modules
+
+Legacy darts scoring code is isolated under `legacy/darts/*` and is not part of the active MewBattle runtime.
 
 ## Testing
 
-Unit tests are in:
+Unit tests live in:
 
-- `lib/game-engine.test.ts`
-- `lib/game-firestore.test.ts`
+- `lib/mew-engine.test.ts`
+- `legacy/darts/lib/game-engine.test.ts`
+- `legacy/darts/lib/game-firestore.test.ts`
 
-Run:
+Run all tests:
 
 ```bash
 npm run test
 ```
 
-## Development notes
+## Development Notes
 
-- Build automatically updates `lib/version.ts` via `scripts/update-version.js`.
-- For game-rule changes, prefer editing pure logic in `lib/game-engine.ts` and add/adjust tests first.
-- Keep translation keys in sync for both `en` and `ru` in `lib/i18n/translations.ts`.
+- Build version is stored in `lib/version.ts` and updated by `scripts/update-version.js`.
+- PWA metadata is configured in `public/manifest.json`.
+- If you change Firestore data contracts, update both TypeScript types and tests.
+- Backup XML parsing in `lib/game-firestore.tsx` accepts both legacy and current backup root tags for compatibility.

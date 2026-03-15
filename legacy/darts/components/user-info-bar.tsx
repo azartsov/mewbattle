@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
-import { useI18n } from "@/lib/i18n/context"
+import { useI18n } from "@/legacy/darts/lib/i18n/context"
 import { BarChart3, LogOut, User } from "lucide-react"
 import { StatsModal } from "./stats-modal"
 

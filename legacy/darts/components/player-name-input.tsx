@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
-import { fetchPlayerNames } from "@/lib/game-firestore"
+import { fetchPlayerNames } from "@/legacy/darts/lib/game-firestore"
 import { ChevronDown } from "lucide-react"
 
 const MAX_NAME_LENGTH = 10

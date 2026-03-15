@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { useI18n } from "@/lib/i18n/context"
+import { useI18n } from "@/legacy/darts/lib/i18n/context"
 
 interface MobileDartboardProps {
   onDartSelected: (value: number, multiplier: 1 | 2 | 3) => void

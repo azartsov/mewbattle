@@ -219,7 +219,7 @@ export function LaunchSplash3D() {
       </Canvas>
 
       <div className="pointer-events-none absolute bottom-7 left-1/2 -translate-x-1/2 text-center">
-        <div className="text-slate-100/90 font-semibold tracking-widest text-sm">DARTMASTER PRO</div>
+        <div className="text-slate-100/90 font-semibold tracking-widest text-sm">MEWBATTLE</div>
         <div className="text-slate-300/70 text-xs mt-1">T20 IMPACT</div>
       </div>
     </div>

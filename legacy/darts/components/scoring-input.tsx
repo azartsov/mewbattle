@@ -3,9 +3,9 @@
 import { useState, useCallback, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { DartInput, DartState, FinishMode } from "@/lib/game-types"
-import { CHECKOUT_MAP, getSimpleFinishSuggestion } from "@/lib/game-types"
-import { useI18n } from "@/lib/i18n/context"
+import type { DartInput, DartState, FinishMode } from "@/legacy/darts/lib/game-types"
+import { CHECKOUT_MAP, getSimpleFinishSuggestion } from "@/legacy/darts/lib/game-types"
+import { useI18n } from "@/legacy/darts/lib/i18n/context"
 import { InteractiveDartboard } from "./interactive-dartboard"
 import { Target, Send, RotateCcw, TrendingDown, Trophy, AlertTriangle, X, Grid3X3, CircleDot } from "lucide-react"
 import {

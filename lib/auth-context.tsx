@@ -47,6 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       case "auth/weak-password": return "Password must be at least 6 characters"
       case "auth/invalid-email": return "Invalid email address"
       case "auth/operation-not-allowed": return "Email/password auth not enabled in Firebase Console"
+      case "auth/configuration-not-found": return "Firebase Auth configuration missing. Check project settings and Auth providers in Firebase Console"
       case "auth/user-not-found":
       case "auth/invalid-credential":
       case "auth/wrong-password": return "Invalid email or password"

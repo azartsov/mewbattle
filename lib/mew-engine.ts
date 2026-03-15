@@ -23,6 +23,8 @@ export function calculateTurn(
       dodged: true,
       shielded: false,
       doubled: false,
+      countered: false,
+      counterDamage: 0,
       text: `${defenderCard.name} dodged ${attackerCard.name}'s attack`,
     }
   }
@@ -46,6 +48,15 @@ export function calculateTurn(
     attackerHealth = Math.min(attackerCard.health, attackerCard.currentHealth + heal)
   }
 
+  const canCounter = defenderHealth > 0 && damage > 0
+  const countered = canCounter && abilityProcs.defenderCounter
+  const counterDamage = countered ? Math.max(2, Math.round(defenderCard.attack * 0.3)) : 0
+  if (countered) {
+    attackerHealth = Math.max(0, attackerHealth - counterDamage)
+  }
+
+  const counterText = countered ? `; ${defenderCard.name} countered for ${counterDamage}` : ""
+
   return {
     defenderHealth,
     attackerHealth,
@@ -53,7 +64,9 @@ export function calculateTurn(
     dodged: false,
     shielded,
     doubled,
-    text: `${attackerCard.name} hit ${defenderCard.name} for ${damage}`,
+    countered,
+    counterDamage,
+    text: `${attackerCard.name} hit ${defenderCard.name} for ${damage}${counterText}`,
   }
 }
 
@@ -62,5 +75,6 @@ export function rollAbilityProcs(): AbilityProcs {
     attackerDoubleHit: Math.random() < 0.3,
     defenderDodge: Math.random() < 0.3,
     defenderShield: Math.random() < 0.35,
+    defenderCounter: Math.random() < 0.12,
   }
 }

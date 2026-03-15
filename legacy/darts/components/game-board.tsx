@@ -1,11 +1,11 @@
 "use client"
 
-import type { Player, GameType, DartInput, FinishMode, TotalLegs } from "@/lib/game-types"
+import type { Player, GameType, DartInput, FinishMode, TotalLegs } from "@/legacy/darts/lib/game-types"
 import { PlayerCard } from "./player-card"
 import { ScoringInput } from "./scoring-input"
 import { GameControls } from "./game-controls"
 import { LanguageSwitcher } from "./language-switcher"
-import { useI18n } from "@/lib/i18n/context"
+import { useI18n } from "@/legacy/darts/lib/i18n/context"
 import { Target, CircleDot, Circle } from "lucide-react"
 
 interface GameBoardProps {

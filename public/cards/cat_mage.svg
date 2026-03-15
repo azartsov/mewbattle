@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#312e81"/>
+      <stop offset="1" stop-color="#a21caf"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="180" fill="url(#bg)"/>
+  <circle cx="160" cy="98" r="45" fill="#f4d2b8"/>
+  <polygon points="132,58 145,36 156,62" fill="#f4d2b8"/>
+  <polygon points="164,62 176,36 188,58" fill="#f4d2b8"/>
+  <polygon points="160,24 126,74 194,74" fill="#c084fc"/>
+  <circle cx="160" cy="33" r="5" fill="#fde68a"/>
+  <circle cx="145" cy="98" r="6" fill="#1e1b4b"/>
+  <circle cx="175" cy="98" r="6" fill="#1e1b4b"/>
+  <ellipse cx="160" cy="112" rx="7" ry="4" fill="#ef4444"/>
+  <circle cx="228" cy="54" r="11" fill="#fef08a" opacity="0.9"/>
+  <rect x="38" y="24" width="106" height="28" rx="14" fill="#1e1b4b" opacity="0.9"/>
+  <text x="91" y="43" fill="#f5d0fe" font-family="Verdana" font-size="14" text-anchor="middle">Cat Mage</text>
+</svg>

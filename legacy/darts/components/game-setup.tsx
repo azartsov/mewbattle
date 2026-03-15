@@ -3,9 +3,9 @@
 import { useState, type DragEvent, type TouchEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { GameType, Player, FinishMode, TotalLegs } from "@/lib/game-types"
-import { useI18n } from "@/lib/i18n/context"
-import { LanguageSwitcher } from "@/components/language-switcher"
+import type { GameType, Player, FinishMode, TotalLegs } from "@/legacy/darts/lib/game-types"
+import { useI18n } from "@/legacy/darts/lib/i18n/context"
+import { LanguageSwitcher } from "@/legacy/darts/components/language-switcher"
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Target, Plus, Trash2, Users, Play, GripVertical, CircleDot, Circle, HelpCircle } from "lucide-react"
-import { PlayerNameInput } from "@/components/player-name-input"
+import { PlayerNameInput } from "@/legacy/darts/components/player-name-input"
 import { APP_VERSION } from "@/lib/version"
 
 const MAX_NAME_LENGTH = 10

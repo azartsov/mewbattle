@@ -2,8 +2,8 @@ import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
-import { I18nProvider } from "@/lib/i18n/context"
 import { AuthProvider } from "@/lib/auth-context"
+import { MewI18nProvider } from "@/lib/mew-i18n"
 import "./globals.css"
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" })
@@ -42,11 +42,11 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
       </head>
       <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased`}>
-        <I18nProvider>
+        <MewI18nProvider>
           <AuthProvider>
             {children}
           </AuthProvider>
-        </I18nProvider>
+        </MewI18nProvider>
         <Analytics />
         <script
           dangerouslySetInnerHTML={{

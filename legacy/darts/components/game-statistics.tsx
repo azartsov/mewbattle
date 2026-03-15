@@ -9,11 +9,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { useI18n } from "@/lib/i18n/context"
-import type { Player, GameType, FinishMode, TotalLegs } from "@/lib/game-types"
+import { useI18n } from "@/legacy/darts/lib/i18n/context"
+import type { Player, GameType, FinishMode, TotalLegs } from "@/legacy/darts/lib/game-types"
 import { BarChart3, Share2, Info, Loader2 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
-import { fetchUserGames, computeEloRatings } from "@/lib/game-firestore"
+import { fetchUserGames, computeEloRatings } from "@/legacy/darts/lib/game-firestore"
 
 interface GameStatisticsProps {
   players: Player[]

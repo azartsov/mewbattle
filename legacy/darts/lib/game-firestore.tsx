@@ -1,5 +1,5 @@
 import { collection, addDoc, query, where, getDocs, serverTimestamp, writeBatch, doc, Timestamp } from "firebase/firestore"
-import { db } from "./firebase"
+import { db } from "../../../lib/firebase"
 import type { Player, GameType, FinishMode, TotalLegs } from "./game-types"
 
 export interface SavedPlayerStats {
@@ -197,7 +197,7 @@ export function gamesToXml(userId: string, games: SavedGame[]): string {
   const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
   const now = new Date().toISOString()
   let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`
-  xml += `<dartsBackup userId="${esc(userId)}" timestamp="${now}">\n`
+  xml += `<mewbattleBackup userId="${esc(userId)}" timestamp="${now}">\n`
   xml += `  <games>\n`
   for (const g of games) {
     const ts = g.timestamp ? new Date(g.timestamp.seconds * 1000).toISOString() : ""
@@ -222,7 +222,7 @@ export function gamesToXml(userId: string, games: SavedGame[]): string {
     xml += `    </game>\n`
   }
   xml += `  </games>\n`
-  xml += `</dartsBackup>\n`
+  xml += `</mewbattleBackup>\n`
   return xml
 }
 
@@ -244,7 +244,9 @@ export function parseBackupXml(xmlString: string): { userId: string; games: Omit
   if (parseError) throw new Error("Invalid XML format")
 
   const root = xmlDoc.documentElement
-  if (root.tagName !== "dartsBackup") throw new Error("Not a darts backup file")
+  if (root.tagName !== "mewbattleBackup" && root.tagName !== "dartsBackup") {
+    throw new Error("Not a mewbattle backup file")
+  }
 
   const userId = root.getAttribute("userId") || ""
   const gamesRoot = firstByTag(root, "games")

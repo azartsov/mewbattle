@@ -1,6 +1,6 @@
 "use client"
 
-import { useI18n } from "@/lib/i18n/context"
+import { useI18n } from "@/legacy/darts/lib/i18n/context"
 import { Button } from "@/components/ui/button"
 
 const FLAGS: Record<string, string> = {

@@ -16,8 +16,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { useI18n } from "@/lib/i18n/context"
-import type { FinishMode } from "@/lib/game-types"
+import { useI18n } from "@/legacy/darts/lib/i18n/context"
+import type { FinishMode } from "@/legacy/darts/lib/game-types"
 import { Undo2, MoreVertical, RotateCcw, Home, HelpCircle, Settings2 } from "lucide-react"
 import { APP_VERSION } from "@/lib/version"
 import { useAuth } from "@/lib/auth-context"
