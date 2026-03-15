@@ -459,10 +459,20 @@ export default function MewBattlePage() {
     }
   }, [])
 
-  const handleEnterBattle = () => {
+  const handleEnterBattle = async () => {
+    if (!userId) return
+    try {
+      await payBattleEntry(userId, BATTLE_ENTRY_COST)
+    } catch {
+      setMessage(`Недостаточно монет: нужно ${BATTLE_ENTRY_COST}`)
+      setShowBankruptcyWarning(true)
+      return
+    }
+
     const randomBoss = pickRandomBoss(lastBattleBossId ?? undefined)
     const scaledBoss = scaleBossForPlayer(randomBoss, playerPower)
 
+    await loadData(false)
     setBattleBoss(scaledBoss)
     setLastBattleBossId(randomBoss.id)
     setBattleDeckSlot(null)
@@ -474,15 +484,8 @@ export default function MewBattlePage() {
   }
 
   const handleStartBattle = async () => {
-    if (!userId) return
     if (!battleDeckSlot) return
     if ((battleDeckCardsBySlot.get(battleDeckSlot) ?? []).length === 0) return
-    try {
-      await payBattleEntry(userId, BATTLE_ENTRY_COST)
-    } catch {
-      setMessage(`Недостаточно монет: нужно ${BATTLE_ENTRY_COST}`)
-      return
-    }
     const winReward = Math.floor(Math.random() * (battleRewardRange.max - battleRewardRange.min + 1)) + battleRewardRange.min
     setPendingBattleWinReward(winReward)
     await loadData()
@@ -764,7 +767,7 @@ export default function MewBattlePage() {
                     <Button
                       size="sm"
                       className="rounded-full"
-                      onClick={handleEnterBattle}
+                      onClick={() => void handleEnterBattle()}
                       disabled={battleLocked}
                     >
                       <Play className="h-3.5 w-3.5" />
@@ -816,7 +819,7 @@ export default function MewBattlePage() {
                         {battleDeckSlot && (battleDeckCardsBySlot.get(battleDeckSlot)?.length ?? 0) > 0 && (
                           <div className="space-y-0.5">
                             <p className="text-sm text-muted-foreground">
-                              Вход: {BATTLE_ENTRY_COST} монет · Выигрыш при победе: {battleRewardRange.min}
+                              Вход: {BATTLE_ENTRY_COST} монет (списывается при вступлении) · Выигрыш при победе: {battleRewardRange.min}
                             </p>
                             <p className="text-xs text-muted-foreground/60">{t.rewardInverseTip}</p>
                           </div>

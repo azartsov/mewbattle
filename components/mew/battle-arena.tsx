@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Cat, Skull } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { calculateTurn, rollAbilityProcs } from "@/lib/mew-engine"
@@ -114,6 +115,10 @@ export function BattleArena({
 
   const aliveFighters = useMemo(() => fighters.filter((f) => f.currentHealth > 0), [fighters])
   const battleOver = boss.currentHealth <= 0 || aliveFighters.length === 0
+  const canExecuteCatTurn = !battleOver && !pendingBossTurn && !!tapSelectedAllyId
+  const canExecuteBossTurn = !battleOver && !!pendingBossTurn
+  const showTurnPulse = canExecuteBossTurn || canExecuteCatTurn
+  const bossTurnActive = !!pendingBossTurn
 
   useEffect(() => {
     setFighters(buildFighters(deckCards))
@@ -403,6 +408,17 @@ export function BattleArena({
     setDraggedId(fighter.id)
   }
 
+  const handleTurnButtonClick = () => {
+    if (canExecuteBossTurn) {
+      void autoResolveBossTurn()
+      return
+    }
+
+    if (canExecuteCatTurn && tapSelectedAllyId) {
+      void attackWith(tapSelectedAllyId)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <Card className="p-3">
@@ -442,6 +458,32 @@ export function BattleArena({
           }
           .battle-damage-petal {
             animation: sakura-damage-float 1.2s ease-out forwards;
+          }
+          @keyframes turn-cta-pulse-rose {
+            0%, 100% {
+              opacity: 1;
+              box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.42);
+            }
+            50% {
+              opacity: 0.72;
+              box-shadow: 0 0 0 8px rgba(244, 63, 94, 0);
+            }
+          }
+          @keyframes turn-cta-pulse-sky {
+            0%, 100% {
+              opacity: 1;
+              box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.42);
+            }
+            50% {
+              opacity: 0.72;
+              box-shadow: 0 0 0 8px rgba(14, 165, 233, 0);
+            }
+          }
+          .turn-cta-pulse-rose {
+            animation: turn-cta-pulse-rose 1.05s ease-in-out infinite;
+          }
+          .turn-cta-pulse-sky {
+            animation: turn-cta-pulse-sky 1.05s ease-in-out infinite;
           }
         `}</style>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -512,11 +554,25 @@ export function BattleArena({
             />
           </div>
 
-          {pendingBossTurn && !battleOver && (
-            <Button size="sm" variant="secondary" onClick={() => void autoResolveBossTurn()}>
-              {t.autoTargetBoss}
+          <div className={`flex w-full max-w-xl items-center gap-2 rounded-lg border px-2 py-1 ${bossTurnActive ? "border-rose-400/35 bg-rose-500/10" : "border-sky-400/35 bg-sky-500/10"}`}>
+            <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full border ${bossTurnActive ? "border-rose-300/55 bg-rose-400/20 text-rose-100" : "border-border/50 bg-background/40 text-muted-foreground"}`}>
+              <Skull className="h-3.5 w-3.5" />
+            </span>
+            <div className={`h-[2px] flex-1 ${bossTurnActive ? "bg-gradient-to-r from-transparent via-rose-300/80 to-rose-300/55" : "bg-gradient-to-r from-transparent via-sky-300/75 to-sky-300/50"}`} />
+            <Button
+              size="sm"
+              variant="secondary"
+              className={`h-8 rounded-full border px-4 text-xs font-semibold text-white ${bossTurnActive ? "border-rose-300/55 bg-rose-500/80 hover:bg-rose-500/90" : "border-sky-300/55 bg-sky-500/80 hover:bg-sky-500/90"} ${showTurnPulse ? (bossTurnActive ? "turn-cta-pulse-rose" : "turn-cta-pulse-sky") : ""}`}
+              disabled={!canExecuteBossTurn && !canExecuteCatTurn}
+              onClick={handleTurnButtonClick}
+            >
+              {pendingBossTurn ? t.bossTurnCta : t.catsTurnCta}
             </Button>
-          )}
+            <div className={`h-[2px] flex-1 ${bossTurnActive ? "bg-gradient-to-l from-transparent via-rose-300/80 to-rose-300/55" : "bg-gradient-to-l from-transparent via-sky-300/75 to-sky-300/50"}`} />
+            <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full border ${bossTurnActive ? "border-border/50 bg-background/40 text-muted-foreground" : "border-sky-300/55 bg-sky-400/20 text-sky-100"}`}>
+              <Cat className="h-3.5 w-3.5" />
+            </span>
+          </div>
 
           <div className="flex w-full flex-wrap items-start justify-center gap-2">
             {fighters.map((fighter) => (

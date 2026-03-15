@@ -83,6 +83,8 @@ type MewTranslations = {
   battleArena: string
   yourTurn: string
   bossTurn: string
+  catsTurnCta: string
+  bossTurnCta: string
   dragOrTapPlayer: string
   dragOrTapBoss: string
   autoTargetBoss: string
@@ -219,6 +221,8 @@ const translations: Record<MewLanguage, MewTranslations> = {
     battleArena: "Battle Arena",
     yourTurn: "Your turn",
     bossTurn: "Boss turn",
+    catsTurnCta: "Cats Turn",
+    bossTurnCta: "Boss Turn",
     dragOrTapPlayer: "Drag a cat onto the boss, or tap cat then tap boss.",
     dragOrTapBoss: "Drag the boss onto a cat, or tap the cat target.",
     autoTargetBoss: "Auto target for boss",
@@ -353,6 +357,8 @@ const translations: Record<MewLanguage, MewTranslations> = {
     battleArena: "Боевая арена",
     yourTurn: "Ваш ход",
     bossTurn: "Ход босса",
+    catsTurnCta: "Ход Котов",
+    bossTurnCta: "Ход Босса",
     dragOrTapPlayer: "Перетащите кота на босса или нажмите на кота, затем на босса.",
     dragOrTapBoss: "Перетащите босса на кота или просто нажмите на цель.",
     autoTargetBoss: "Автовыбор цели для босса",
