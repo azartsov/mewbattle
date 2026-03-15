@@ -1,0 +1,499 @@
+"use client"
+
+import { useState, type DragEvent, type TouchEvent } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import type { GameType, Player, FinishMode, TotalLegs } from "@/lib/game-types"
+import { useI18n } from "@/lib/i18n/context"
+import { LanguageSwitcher } from "@/components/language-switcher"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Target, Plus, Trash2, Users, Play, GripVertical, CircleDot, Circle, HelpCircle } from "lucide-react"
+import { PlayerNameInput } from "@/components/player-name-input"
+import { APP_VERSION } from "@/lib/version"
+
+const MAX_NAME_LENGTH = 10
+
+interface GameSetupProps {
+  // Returned value can be a promise since caller may need to fetch ratings before
+  // starting the game.
+  onStartGame: (
+    players: Player[],
+    gameType: GameType,
+    finishMode: FinishMode,
+    totalLegs: TotalLegs
+  ) => void | Promise<void>
+}
+
+export function GameSetup({ onStartGame }: GameSetupProps) {
+  const { t, formatString } = useI18n()
+  const [gameType, setGameType] = useState<GameType>(501)
+  const [finishMode, setFinishMode] = useState<FinishMode>("double")
+  const [totalLegs, setTotalLegs] = useState<TotalLegs>(1)
+  const [playerNames, setPlayerNames] = useState<string[]>([
+    formatString(t.playerPlaceholder, { num: 1 }),
+    formatString(t.playerPlaceholder, { num: 2 }),
+  ])
+  const [newPlayerName, setNewPlayerName] = useState("")
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+  const [isTouchDragging, setIsTouchDragging] = useState(false)
+  const [touchPoint, setTouchPoint] = useState<{ x: number; y: number } | null>(null)
+
+  const vibrate = (pattern: number | number[]) => {
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      navigator.vibrate(pattern)
+    }
+  }
+
+  const legsOptions: TotalLegs[] = [1, 3, 5, 7, 9]
+  const legsToWin = Math.ceil(totalLegs / 2)
+
+  const addPlayer = () => {
+    if (playerNames.length >= 10) return
+    const name = newPlayerName.trim() || formatString(t.playerPlaceholder, { num: playerNames.length + 1 })
+    setPlayerNames([...playerNames, name])
+    setNewPlayerName("")
+  }
+
+  const removePlayer = (index: number) => {
+    if (playerNames.length <= 2) return
+    setPlayerNames(playerNames.filter((_, i) => i !== index))
+  }
+
+  const updatePlayerName = (index: number, name: string) => {
+    if (name.length > MAX_NAME_LENGTH) return
+    const updated = [...playerNames]
+    updated[index] = name
+    setPlayerNames(updated)
+  }
+
+  const movePlayer = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return
+    setPlayerNames((prev) => {
+      const updated = [...prev]
+      const [moved] = updated.splice(fromIndex, 1)
+      updated.splice(toIndex, 0, moved)
+      return updated
+    })
+  }
+
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index)
+    setDragOverIndex(index)
+    vibrate(16)
+  }
+
+  const handleDragOver = (event: DragEvent<HTMLDivElement>, index: number) => {
+    event.preventDefault()
+    if (dragOverIndex !== index) setDragOverIndex(index)
+  }
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>, index: number) => {
+    event.preventDefault()
+    if (draggedIndex === null) return
+    movePlayer(draggedIndex, index)
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+  }
+
+  const findIndexFromPoint = (clientX: number, clientY: number): number | null => {
+    const target = document.elementFromPoint(clientX, clientY)
+    if (!target) return null
+    const row = target.closest("[data-player-index]")
+    if (!row) return null
+    const value = row.getAttribute("data-player-index")
+    if (!value) return null
+    const parsed = Number.parseInt(value, 10)
+    return Number.isNaN(parsed) ? null : parsed
+  }
+
+  const handleTouchStart = (event: TouchEvent<HTMLButtonElement>, index: number) => {
+    const touch = event.touches[0]
+    setIsTouchDragging(true)
+    setDraggedIndex(index)
+    setDragOverIndex(index)
+    vibrate(16)
+    if (touch) {
+      setTouchPoint({ x: touch.clientX, y: touch.clientY })
+    }
+  }
+
+  const handleTouchMove = (event: TouchEvent<HTMLButtonElement>) => {
+    if (!isTouchDragging) return
+    const touch = event.touches[0]
+    if (!touch) return
+    event.preventDefault()
+    setTouchPoint({ x: touch.clientX, y: touch.clientY })
+    const overIndex = findIndexFromPoint(touch.clientX, touch.clientY)
+    if (overIndex !== null && overIndex !== dragOverIndex) {
+      setDragOverIndex(overIndex)
+    }
+  }
+
+  const handleTouchEnd = () => {
+    if (draggedIndex !== null && dragOverIndex !== null) {
+      movePlayer(draggedIndex, dragOverIndex)
+      vibrate([10, 40, 18])
+    }
+    setIsTouchDragging(false)
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+    setTouchPoint(null)
+  }
+
+  const handleStartGame = () => {
+    const players: Player[] = playerNames.map((name, index) => ({
+      id: `player-${index}-${Date.now()}`,
+      name: name.trim() || formatString(t.playerPlaceholder, { num: index + 1 }),
+      startingScore: gameType,
+      currentScore: gameType,
+      history: [],
+      legsWon: 0,
+      // rating will be filled by caller (page.tsx) but default to 1500 for
+      // completeness; setup itself doesn't know historical data.
+      rating: 1500,
+    }))
+    onStartGame(players, gameType, finishMode, totalLegs)
+  }
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <Card className="w-full max-w-lg bg-card border-border relative">
+        {/* Language Switcher + Help */}
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5">
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-foreground h-8 w-8"
+                aria-label={t.helpTitle}
+              >
+                <HelpCircle className="w-4 h-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-card border-border max-w-md max-h-[85vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-foreground flex items-center gap-2 text-base">
+                  <HelpCircle className="w-4 h-4 text-primary" />
+                  {t.helpTitle}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 text-sm">
+                <section className="rounded-lg bg-secondary/50 p-3 border-l-2 border-primary">
+                  <h4 className="font-semibold text-foreground mb-1">{t.helpSetupTitle}</h4>
+                  <p className="text-muted-foreground leading-relaxed">{t.helpSetupDesc}</p>
+                </section>
+                <section className="rounded-lg bg-secondary/50 p-3 border-l-2 border-primary">
+                  <h4 className="font-semibold text-foreground mb-1">{t.helpRulesTitle}</h4>
+                  <div className="space-y-1.5 text-muted-foreground leading-relaxed">
+                    <p>{t.helpSimpleRuleDesc}</p>
+                    <p>{t.helpDoubleRuleDesc}</p>
+                    <p>{t.helpBustDesc}</p>
+                  </div>
+                </section>
+                <section className="rounded-lg bg-secondary/50 p-3 border-l-2 border-primary">
+                  <h4 className="font-semibold text-foreground mb-1">{t.helpInputTitle}</h4>
+                  <p className="text-muted-foreground leading-relaxed">{t.helpInputDesc}</p>
+                </section>
+                {/* Dartboard Scoring Guide */}
+                <section className="rounded-lg bg-secondary/50 p-3 border-l-2 border-primary">
+                  <h4 className="font-semibold text-foreground mb-2">{t.helpScoringGuideTitle}</h4>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: "#f5f0e1" }} />
+                      <span className="text-muted-foreground text-xs">{t.helpSingleZone}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: "#1e8449" }} />
+                      <span className="text-muted-foreground text-xs">{t.helpDoubleZone}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: "#c0392b" }} />
+                      <span className="text-muted-foreground text-xs">{t.helpTripleZone}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: "#1e8449" }} />
+                      <span className="text-muted-foreground text-xs">{t.helpBullZone}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: "#c0392b" }} />
+                      <span className="text-muted-foreground text-xs">{t.helpBullseyeZone}</span>
+                    </div>
+                  </div>
+                  <div className="mt-2.5 pt-2 border-t border-border/50">
+                    <p className="font-medium text-foreground text-xs mb-1">{t.helpExamplesTitle}</p>
+                    <div className="space-y-0.5 text-muted-foreground text-xs">
+                      <p>{t.helpExample1}</p>
+                      <p>{t.helpExample2}</p>
+                      <p>{t.helpExample3}</p>
+                      <p>{t.helpExample4}</p>
+                    </div>
+                  </div>
+                </section>
+                <section className="rounded-lg bg-secondary/50 p-3 border-l-2 border-primary">
+                  <h4 className="font-semibold text-foreground mb-1">{t.helpStatsTitle}</h4>
+                  <p className="text-muted-foreground leading-relaxed">{t.helpStatsDesc}</p>
+                </section>
+              </div>
+              <div className="mt-4 pt-4 border-t border-border/50 text-center text-xs text-muted-foreground">
+                <span>Version {APP_VERSION}</span>
+              </div>
+            </DialogContent>
+          </Dialog>
+          <LanguageSwitcher />
+        </div>
+
+        <CardHeader className="text-center space-y-4">
+          <div className="flex items-center justify-center gap-3">
+            <Target className="w-10 h-10 text-primary" />
+            <CardTitle className="text-3xl font-bold text-foreground">{t.appTitle}</CardTitle>
+          </div>
+          <p className="text-muted-foreground">{t.appSubtitle}</p>
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          {/* Game Type Selection */}
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-foreground flex items-center gap-2">
+              <Target className="w-4 h-4" />
+              {t.gameType}
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                type="button"
+                variant={gameType === 301 ? "default" : "secondary"}
+                className={`h-16 text-2xl font-bold ${
+                  gameType === 301
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                }`}
+                onClick={() => setGameType(301)}
+              >
+                301
+              </Button>
+              <Button
+                type="button"
+                variant={gameType === 501 ? "default" : "secondary"}
+                className={`h-16 text-2xl font-bold ${
+                  gameType === 501
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                }`}
+                onClick={() => setGameType(501)}
+              >
+                501
+              </Button>
+            </div>
+          </div>
+
+          {/* Number of Legs Selection */}
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-foreground flex items-center gap-2">
+              <Target className="w-4 h-4" />
+              {t.numberOfLegs}
+            </label>
+            <div className="grid grid-cols-5 gap-2">
+              {legsOptions.map((legs) => (
+                <Button
+                  key={legs}
+                  type="button"
+                  variant={totalLegs === legs ? "default" : "secondary"}
+                  className={`h-12 text-lg font-bold ${
+                    totalLegs === legs
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                  }`}
+                  onClick={() => setTotalLegs(legs)}
+                >
+                  {legs}
+                </Button>
+              ))}
+            </div>
+            {totalLegs > 1 && (
+              <p className="text-xs text-muted-foreground text-center">
+                {formatString(t.legsHint, { count: legsToWin })}
+              </p>
+            )}
+          </div>
+
+          {/* Finish Mode Selection */}
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-foreground flex items-center gap-2">
+              <CircleDot className="w-4 h-4" />
+              {t.finishMode}
+            </label>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setFinishMode("simple")}
+                className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+                  finishMode === "simple"
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-secondary/30 hover:border-muted-foreground/50"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`mt-0.5 ${finishMode === "simple" ? "text-primary" : "text-muted-foreground"}`}>
+                    {finishMode === "simple" ? (
+                      <CircleDot className="w-5 h-5" />
+                    ) : (
+                      <Circle className="w-5 h-5" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className={`font-medium ${finishMode === "simple" ? "text-foreground" : "text-muted-foreground"}`}>
+                      {t.finishSimple}
+                    </div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      {t.finishSimpleDesc}
+                    </div>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFinishMode("double")}
+                className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+                  finishMode === "double"
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-secondary/30 hover:border-muted-foreground/50"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`mt-0.5 ${finishMode === "double" ? "text-primary" : "text-muted-foreground"}`}>
+                    {finishMode === "double" ? (
+                      <CircleDot className="w-5 h-5" />
+                    ) : (
+                      <Circle className="w-5 h-5" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className={`font-medium ${finishMode === "double" ? "text-foreground" : "text-muted-foreground"}`}>
+                      {t.finishDouble}
+                    </div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      {t.finishDoubleDesc}
+                    </div>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Player List */}
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-foreground flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              {formatString(t.playersCount, { count: playerNames.length })}
+            </label>
+            <div className="space-y-2">
+              {playerNames.map((name, index) => (
+                <div
+                  key={`player-row-${index}`}
+                  data-player-index={index}
+                  onDragOver={(event) => handleDragOver(event, index)}
+                  onDrop={(event) => handleDrop(event, index)}
+                  className={`flex items-center gap-2 rounded-lg p-2 transition-colors ${
+                    dragOverIndex === index ? "bg-primary/15 ring-1 ring-primary/40" : "bg-secondary/50"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    draggable
+                    onDragStart={() => handleDragStart(index)}
+                    onDragEnd={handleDragEnd}
+                    onTouchStart={(event) => handleTouchStart(event, index)}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                    onTouchCancel={handleTouchEnd}
+                    className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground"
+                    aria-label={`Drag player ${index + 1}`}
+                    title="Drag to reorder"
+                    style={{ touchAction: "none" }}
+                  >
+                    <GripVertical className="w-4 h-4" />
+                  </button>
+                  <span className="text-xs text-muted-foreground w-6">#{index + 1}</span>
+                  <PlayerNameInput
+                    value={name}
+                    onChange={(val) => updatePlayerName(index, val)}
+                    placeholder={formatString(t.playerPlaceholder, { num: index + 1 })}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removePlayer(index)}
+                    disabled={playerNames.length <= 2}
+                    className="text-muted-foreground hover:text-destructive disabled:opacity-30"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            {/* Add Player */}
+            {playerNames.length < 10 && (
+              <div className="flex gap-2">
+                <PlayerNameInput
+                  value={newPlayerName}
+                  onChange={(val) => { if (val.length <= MAX_NAME_LENGTH) setNewPlayerName(val) }}
+                  onEnter={addPlayer}
+                  placeholder={formatString(t.playerPlaceholder, { num: playerNames.length + 1 })}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={addPlayer}
+                  className="bg-secondary text-secondary-foreground"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  {t.add}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Start Game Button */}
+          <Button
+            onClick={handleStartGame}
+            className="w-full h-14 text-lg font-bold bg-primary text-primary-foreground hover:bg-primary/90"
+            disabled={playerNames.length < 2}
+          >
+            <Play className="w-5 h-5 mr-2" />
+            {totalLegs > 1 ? t.startMatch : t.startGame}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {isTouchDragging && draggedIndex !== null && touchPoint && (
+        <div
+          className="fixed z-[100] pointer-events-none transition-transform duration-100 ease-out will-change-transform"
+          style={{ left: touchPoint.x, top: touchPoint.y, transform: "translate(-50%, -50%) scale(1.03)" }}
+        >
+          <div className="min-w-[210px] max-w-[300px] flex items-center gap-2 rounded-lg border border-primary/40 bg-card/95 backdrop-blur-sm shadow-xl px-3 py-2 transition-all duration-150 ease-out opacity-100">
+            <GripVertical className="w-4 h-4 text-primary" />
+            <span className="text-xs text-muted-foreground">#{draggedIndex + 1}</span>
+            <span className="truncate text-sm font-medium text-foreground">
+              {playerNames[draggedIndex] || formatString(t.playerPlaceholder, { num: draggedIndex + 1 })}
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
