@@ -53,6 +53,17 @@ import { APP_VERSION } from "@/lib/version"
 type TabKey = "collection" | "deck" | "boosters" | "battle" | "help"
 type BattleStage = "idle" | "preparing" | "fighting" | "completed"
 
+const CAT_CODEX_QUOTES = [
+  "«Путь Кота — это сон. В ситуации \"или-или\" без колебаний выбирай сон».",
+  "«Каждое утро думай о том, не поспать ли мне еще. Каждый вечер освежай свой ум мыслями о сладком сне».",
+  "«Ищи недостатки у других, а не у себя».",
+  "«Подумав — передумай, а передумав — подумай».",
+  "«Лень Кота тяжелей горы, а Сон легче пуха».",
+  "«Семь раз упади — восемь раз поспи».",
+  "«Умный Кот прячет свои когти».",
+  "«Не говори плохо о себе. Ибо Кот внутри тебя слышит твои слова и его тошнит от них».",
+] as const
+
 function AuthScreen() {
   const { signIn, signUp, enterGuestMode, error } = useAuth()
   const { t } = useMewI18n()
@@ -166,6 +177,11 @@ export default function MewBattlePage() {
   const [savingUnsavedDeck, setSavingUnsavedDeck] = useState(false)
 
   const userId = user?.uid ?? null
+
+  const catCodexQuote = useMemo(() => {
+    const idx = Math.floor(Math.random() * CAT_CODEX_QUOTES.length)
+    return CAT_CODEX_QUOTES[idx] ?? CAT_CODEX_QUOTES[0]
+  }, [battleSessionId])
 
   const loadData = useCallback(async (showSpinner = true) => {
     if (!userId) {
@@ -452,12 +468,12 @@ export default function MewBattlePage() {
     return battleDeckCardsBySlot.get(battleDeckSlot) ?? []
   }, [battleDeckCardsBySlot, battleDeckSlot])
 
-  const deckPowerBySlot = useMemo(() => {
-    const scoreCard = (card: MewCard) => {
-      const rarityScore = card.rarity === "legendary" ? 18 : card.rarity === "epic" ? 12 : card.rarity === "rare" ? 7 : 3
-      return card.attack + card.health * 0.55 + rarityScore
-    }
+  const scoreCard = useCallback((card: MewCard) => {
+    const rarityScore = card.rarity === "legendary" ? 18 : card.rarity === "epic" ? 12 : card.rarity === "rare" ? 7 : 3
+    return card.attack + card.health * 0.55 + rarityScore
+  }, [])
 
+  const deckPowerBySlot = useMemo(() => {
     const map = new Map<DeckSlotKey, number>()
     for (const slot of DECK_SLOT_KEYS) {
       const deckCards = battleDeckCardsBySlot.get(slot) ?? []
@@ -465,39 +481,43 @@ export default function MewBattlePage() {
       map.set(slot, score)
     }
     return map
-  }, [battleDeckCardsBySlot])
+  }, [battleDeckCardsBySlot, scoreCard])
+
+  const globalDeckPowerBounds = useMemo(() => {
+    const deckSize = profile?.maxDeckSize ?? 3
+    const allScores = cards.map((card) => scoreCard(card)).filter((v) => Number.isFinite(v))
+    if (allScores.length === 0) return { min: 0, max: 0 }
+
+    const sorted = allScores.toSorted((a, b) => a - b)
+    const take = Math.max(1, Math.min(deckSize, sorted.length))
+    const min = sorted.slice(0, take).reduce((sum, v) => sum + v, 0)
+    const max = sorted.slice(sorted.length - take).reduce((sum, v) => sum + v, 0)
+    return { min, max }
+  }, [cards, profile?.maxDeckSize, scoreCard])
+
+  const computeRewardForDeckScore = useCallback((deckScore: number) => {
+    const minScore = globalDeckPowerBounds.min
+    const maxScore = globalDeckPowerBounds.max
+    if (!(deckScore > 0) || !(minScore > 0) || !(maxScore > 0)) return 200
+
+    const span = maxScore - minScore
+    const normalizedRaw = span > 0 ? (deckScore - minScore) / span : 0.5
+    const normalized = Math.max(0, Math.min(1, normalizedRaw))
+    return Math.max(50, Math.min(200, Math.round(200 - normalized * 150)))
+  }, [globalDeckPowerBounds.max, globalDeckPowerBounds.min])
 
   const battleRewardRange = useMemo(() => {
     if (!battleDeckSlot) return { min: 50, max: 50 }
     const selectedScore = deckPowerBySlot.get(battleDeckSlot) ?? 0
-    const scores = DECK_SLOT_KEYS
-      .map((slot) => deckPowerBySlot.get(slot) ?? 0)
-      .filter((score) => score > 0)
 
-    if (scores.length === 0 || selectedScore <= 0) return { min: 200, max: 200 }
-
-    const minScore = Math.min(...scores)
-    const maxScore = Math.max(...scores)
-    const span = maxScore - minScore
-    // Слабейшая колода (minScore) → 200, сильнейшая (maxScore) → 50 (линейно)
-    // span === 0 (все равны) → 0.5 → 125 (среднее)
-    const normalized = span > 0 ? (selectedScore - minScore) / span : 0.5
-    const reward = Math.round(200 - normalized * 150)
-    return { min: Math.max(50, Math.min(200, reward)), max: Math.max(50, Math.min(200, reward)) }
-  }, [battleDeckSlot, deckPowerBySlot])
+    const reward = computeRewardForDeckScore(selectedScore)
+    return { min: reward, max: reward }
+  }, [battleDeckSlot, computeRewardForDeckScore, deckPowerBySlot])
 
   const deckBuilderPotentialReward = useMemo(() => {
     const currentScore = deckPowerBySlot.get(selectedDeckSlot) ?? 0
-    const scores = DECK_SLOT_KEYS
-      .map((slot) => deckPowerBySlot.get(slot) ?? 0)
-      .filter((score) => score > 0)
-    if (scores.length === 0 || currentScore <= 0) return 200
-    const minScore = Math.min(...scores)
-    const maxScore = Math.max(...scores)
-    const span = maxScore - minScore
-    const normalized = span > 0 ? (currentScore - minScore) / span : 0.5
-    return Math.max(50, Math.min(200, Math.round(200 - normalized * 150)))
-  }, [selectedDeckSlot, deckPowerBySlot])
+    return computeRewardForDeckScore(currentScore)
+  }, [computeRewardForDeckScore, selectedDeckSlot, deckPowerBySlot])
 
   const saveBattle = useCallback(async (winnerId: string, bossId: string, log: BattleLogEntry[], hpBonus = 0) => {
     if (!userId) return
@@ -1003,15 +1023,23 @@ export default function MewBattlePage() {
                 </Card>
 
                 {battleStage === "fighting" && battleBoss && battleDeckSlot && activeBattleDeckCards.length > 0 && (
-                  <BattleArena
-                    key={`${battleSessionId}-${battleBoss.id}-${battleDeckSlot}`}
-                    deckCards={activeBattleDeckCards}
-                    onSaveBattle={saveBattle}
-                    deckName={activeBattleDeckName ?? getDefaultDeckName(battleDeckSlot)}
-                    initialBoss={battleBoss}
-                    showResetButton={false}
-                    onBattleResolved={handleBattleResolved}
-                  />
+                  <>
+                    <Card className="p-4 bg-card/80 border-border">
+                      <div className="space-y-2 text-center">
+                        <p className="text-sm italic text-foreground/90 leading-relaxed">{catCodexQuote}</p>
+                        <p className="text-xs text-muted-foreground/70">— {t.catCodexAttribution}</p>
+                      </div>
+                    </Card>
+                    <BattleArena
+                      key={`${battleSessionId}-${battleBoss.id}-${battleDeckSlot}`}
+                      deckCards={activeBattleDeckCards}
+                      onSaveBattle={saveBattle}
+                      deckName={activeBattleDeckName ?? getDefaultDeckName(battleDeckSlot)}
+                      initialBoss={battleBoss}
+                      showResetButton={false}
+                      onBattleResolved={handleBattleResolved}
+                    />
+                  </>
                 )}
               </div>
             )}

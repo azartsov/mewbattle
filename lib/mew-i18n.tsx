@@ -157,6 +157,7 @@ type MewTranslations = {
   deckPotentialReward: string
   bossTurnCountdown: string
   logout: string
+  catCodexAttribution: string
 }
 
 const translations: Record<MewLanguage, MewTranslations> = {
@@ -313,6 +314,7 @@ const translations: Record<MewLanguage, MewTranslations> = {
     deckPotentialReward: "Estimated battle reward",
     bossTurnCountdown: "Boss is choosing target...",
     logout: "Logout",
+    catCodexAttribution: "quote from the Cat Codex",
   },
   ru: {
     appTitle: "MewBattle",
@@ -467,6 +469,7 @@ const translations: Record<MewLanguage, MewTranslations> = {
     deckPotentialReward: "Ожидаемая награда за бой",
     bossTurnCountdown: "Босс выбирает цель...",
     logout: "Выйти",
+    catCodexAttribution: "цитата из Кодекса Кота",
   },
 }
 
