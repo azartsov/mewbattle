@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import type { MewCard } from "@/lib/mew-types"
 import { MewCardFace } from "@/components/mew/mew-card-face"
 import { CoinPawBadge } from "@/components/mew/coin-paw-badge"
+import { PawLoader } from "@/components/mew/paw-loader"
 import { useMewI18n } from "@/lib/mew-i18n"
 import type { BoosterOffer, BoosterOpenResult } from "@/lib/mew-firestore"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -53,6 +54,8 @@ export function BoosterShop({ offers, onOpen }: BoosterShopProps) {
 
   return (
     <div className="space-y-3">
+      {opening ? <PawLoader overlay size="lg" label={t.openingBooster} /> : null}
+
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-semibold">{t.boosters}</h2>
         {selectedOffer && <CoinPawBadge amount={selectedOffer.cost} compact />}
@@ -87,7 +90,12 @@ export function BoosterShop({ offers, onOpen }: BoosterShopProps) {
                 disabled={opening}
                 variant={selected ? "default" : "secondary"}
               >
-                {opening && openingOfferId === offer.id ? t.openingBooster : t.openBooster}
+                {opening && openingOfferId === offer.id ? (
+                  <>
+                    <PawLoader size="sm" />
+                    {t.openingBooster}
+                  </>
+                ) : t.openBooster}
               </Button>
             </article>
           )

@@ -46,6 +46,7 @@ export interface UserProfile {
   totalSpent: number
   cardCount?: number
   updatedAtMs?: number
+  battleHistoryResetAtMs?: number
 }
 
 export interface BattleLogEntry {

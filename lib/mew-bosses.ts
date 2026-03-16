@@ -36,9 +36,9 @@ export const BOSS_FIGHTERS: FighterCard[] = [
     entityType: "boss",
     bossType: "raven",
     name: "Evil Raven",
-    attack: 14,
-    health: 180,
-    currentHealth: 180,
+    attack: 13,
+    health: 164,
+    currentHealth: 164,
     ability: "Ninja dodge and mage shield",
     lore: "A cursed raven sorcerer who controls storm feathers and mirror wards.",
     imageUrl: BOSS_TYPE_ICON.raven,
@@ -48,9 +48,9 @@ export const BOSS_FIGHTERS: FighterCard[] = [
     entityType: "boss",
     bossType: "dog",
     name: "Evil Dog",
-    attack: 16,
-    health: 195,
-    currentHealth: 195,
+    attack: 15,
+    health: 178,
+    currentHealth: 178,
     ability: "Berserk bite and heavy counterattack",
     lore: "An iron-jawed war dog from the burnt shrine roads.",
     imageUrl: BOSS_TYPE_ICON.dog,
@@ -60,9 +60,9 @@ export const BOSS_FIGHTERS: FighterCard[] = [
     entityType: "boss",
     bossType: "rat",
     name: "Evil Rat",
-    attack: 13,
-    health: 170,
-    currentHealth: 170,
+    attack: 12,
+    health: 156,
+    currentHealth: 156,
     ability: "Quick dodge and poison-like chip damage",
     lore: "A plague rat master that wins by speed and attrition.",
     imageUrl: BOSS_TYPE_ICON.rat,
@@ -84,8 +84,8 @@ export function pickRandomBoss(excludeBossId?: string): FighterCard {
 
 export function scaleBossForPlayer(baseBoss: FighterCard, playerPower: number): FighterCard {
   const clampedPower = Math.max(0, Math.min(10, playerPower))
-  const attackMultiplier = 1 + clampedPower * 0.055
-  const healthMultiplier = 1 + clampedPower * 0.075
+  const attackMultiplier = 1 + Math.max(0, clampedPower - 1) * 0.045
+  const healthMultiplier = 1 + Math.max(0, clampedPower - 0.75) * 0.06
 
   const attack = Math.max(baseBoss.attack, Math.round(baseBoss.attack * attackMultiplier))
   const health = Math.max(baseBoss.health, Math.round(baseBoss.health * healthMultiplier))

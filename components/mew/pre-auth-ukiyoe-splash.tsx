@@ -117,6 +117,9 @@ export function PreAuthUkiyoeSplash({ onEnter }: PreAuthUkiyoeSplashProps) {
       {/* Center logo from sakura petals */}
       <div className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center px-4">
         <div className="text-center">
+          <p className="mb-1 select-none text-[clamp(0.95rem,3.8vw,1.7rem)] font-bold tracking-[0.22em] text-rose-100/92 [text-shadow:0_1px_0_rgba(0,0,0,0.55),0_0_12px_rgba(251,113,133,0.35)]" style={{ fontFamily: '"Hiragino Mincho ProN", "Yu Mincho", "MS Mincho", serif' }}>
+            猫戦
+          </p>
           <h2 className="sakura-title select-none whitespace-nowrap text-[clamp(1.55rem,8.6vw,4.5rem)] uppercase">
             ＭＥＷＢＡＴＴＬＥ
           </h2>

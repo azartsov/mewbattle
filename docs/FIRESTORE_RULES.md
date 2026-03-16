@@ -42,6 +42,11 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    match /leaderboard/{userId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isOwner(userId);
+    }
+
     match /games/{gameId} {
       allow read, create, update, delete: if isOwner(request.resource.data.userId)
         || isOwner(resource.data.userId);
@@ -53,5 +58,6 @@ service cloud.firestore {
 Notes:
 
 - In production, tighten `battles` read access and validate payload fields more strictly.
+- `leaderboard` is optional fallback-safe in code, but enable it in rules to use top-25 gated leaderboard writes.
 - If `cards` is empty, the app now falls back to local starter cards, so writes to `/cards` are not required on client.
 - `user_profiles` is required for coins/balance/win-streak economy.

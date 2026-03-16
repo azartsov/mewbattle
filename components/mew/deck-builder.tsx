@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import type { MewCard, UserCard } from "@/lib/mew-types"
 import { MewCardFace } from "@/components/mew/mew-card-face"
+import { PawLoader } from "@/components/mew/paw-loader"
 import { useMewI18n } from "@/lib/mew-i18n"
 import type { DeckSlotKey } from "@/lib/mew-firestore"
 
@@ -18,6 +19,8 @@ interface DeckBuilderProps {
   initialDeckCardIds: string[]
   onSelectDeckSlot: (slot: DeckSlotKey) => void
   onSaveDeck: (name: string, cardIds: string[]) => Promise<void>
+  onDraftChange?: (name: string, cardIds: string[]) => void
+  onDirtyChange?: (isDirty: boolean) => void
 }
 
 export function DeckBuilder({
@@ -30,6 +33,8 @@ export function DeckBuilder({
   initialDeckCardIds,
   onSelectDeckSlot,
   onSaveDeck,
+  onDraftChange,
+  onDirtyChange,
 }: DeckBuilderProps) {
   const { t } = useMewI18n()
   const [deckName, setDeckName] = useState(initialDeckName)
@@ -97,6 +102,28 @@ export function DeckBuilder({
   }
 
   const deckCards = deck.map((id) => cards.find((c) => c.id === id) ?? null)
+  const draftCardIds = useMemo(() => deck.filter((id): id is string => Boolean(id)), [deck])
+
+  const isDirty = useMemo(() => {
+    const initialName = initialDeckName.trim()
+    const draftName = deckName.trim()
+    if (initialName !== draftName) return true
+
+    if (draftCardIds.length !== initialDeckCardIds.length) return true
+    for (let i = 0; i < draftCardIds.length; i += 1) {
+      if (draftCardIds[i] !== initialDeckCardIds[i]) return true
+    }
+
+    return false
+  }, [deckName, draftCardIds, initialDeckCardIds, initialDeckName])
+
+  useEffect(() => {
+    onDraftChange?.(deckName, draftCardIds)
+  }, [deckName, draftCardIds, onDraftChange])
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
 
   return (
     <div className="space-y-4">
@@ -128,7 +155,12 @@ export function DeckBuilder({
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-semibold">{t.myDeck} (max {maxDeckSize})</h3>
           <Button size="sm" className="h-7 rounded-full px-3" onClick={handleSave} disabled={saving || deck.filter(Boolean).length === 0}>
-            {saving ? t.savingDeck : t.saveDeck}
+            {saving ? (
+              <>
+                <PawLoader size="sm" />
+                {t.savingDeck}
+              </>
+            ) : t.saveDeck}
           </Button>
         </div>
         <div className="mb-2 flex flex-wrap gap-1.5">

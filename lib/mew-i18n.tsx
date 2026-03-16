@@ -73,6 +73,12 @@ type MewTranslations = {
   deckName: string
   saveDeck: string
   savingDeck: string
+  deckUnsavedPrompt: string
+  deckUnsavedTitle: string
+  deckUnsavedDesc: string
+  deckUnsavedSave: string
+  deckUnsavedDiscard: string
+  deckUnsavedStay: string
   remove: string
   emptyDeckSlot: string
   createNewDeck: string
@@ -130,6 +136,7 @@ type MewTranslations = {
   resetConfirmDesc: string
   bankruptcyWarning: string
   bankruptcyReset: string
+  battleHistoryCleared: string
   nickname: string
   leaderboard: string
   leaderboardTitle: string
@@ -212,6 +219,12 @@ const translations: Record<MewLanguage, MewTranslations> = {
     deckName: "Deck name",
     saveDeck: "Save Deck",
     savingDeck: "Saving...",
+    deckUnsavedPrompt: "You have unsaved deck changes. Press OK to save them, or Cancel to continue without saving.",
+    deckUnsavedTitle: "Unsaved Deck Changes",
+    deckUnsavedDesc: "You have unsaved deck changes. Save them before leaving this section?",
+    deckUnsavedSave: "Save",
+    deckUnsavedDiscard: "Don't Save",
+    deckUnsavedStay: "Stay",
     remove: "Remove",
     emptyDeckSlot: "Drop or tap a cat card here",
     createNewDeck: "New Deck",
@@ -269,12 +282,13 @@ const translations: Record<MewLanguage, MewTranslations> = {
     resetConfirmDesc: "Your cards, decks and stats will be erased. You will start fresh with 3 cards and 500 coins.",
     bankruptcyWarning: "Not enough coins to start a battle and nothing left to sell. Reset your progress to begin again.",
     bankruptcyReset: "Start Over",
+    battleHistoryCleared: "Battle history cleared.",
     nickname: "Nickname",
     leaderboard: "Leaderboard",
     leaderboardTitle: "Top Players",
     leaderboardEmpty: "No players on the leaderboard yet.",
     lbColNickname: "Player",
-    lbColScore: "Earned",
+    lbColScore: "Coins",
     lbColCards: "Cards",
     lbColDate: "Date",
     rewardInverseTip: "Weaker deck -> higher reward (inversely proportional to deck strength)",
@@ -349,6 +363,12 @@ const translations: Record<MewLanguage, MewTranslations> = {
     deckName: "Название колоды",
     saveDeck: "Сохранить колоду",
     savingDeck: "Сохраняем...",
+    deckUnsavedPrompt: "Есть несохраненные изменения колоды. Нажмите OK, чтобы сохранить, или Cancel, чтобы продолжить без сохранения.",
+    deckUnsavedTitle: "Несохраненные изменения",
+    deckUnsavedDesc: "В колоде есть несохраненные изменения. Сохранить их перед выходом из раздела?",
+    deckUnsavedSave: "Сохранить",
+    deckUnsavedDiscard: "Не сохранять",
+    deckUnsavedStay: "Остаться",
     remove: "Убрать",
     emptyDeckSlot: "Перетащите карту кота сюда или выберите тапом",
     createNewDeck: "Новая колода",
@@ -406,12 +426,13 @@ const translations: Record<MewLanguage, MewTranslations> = {
     resetConfirmDesc: "Карты, колоды и статистика будут удалены. Вы начнете заново с 3 картами и 500 монетами.",
     bankruptcyWarning: "Недостаточно монет для боя и нечего продавать. Сбросьте прогресс, чтобы начать заново.",
     bankruptcyReset: "Начать заново",
+    battleHistoryCleared: "История боев очищена.",
     nickname: "Ник",
     leaderboard: "Топ игроков",
     leaderboardTitle: "Топ игроков",
     leaderboardEmpty: "В таблице пока нет игроков.",
     lbColNickname: "Игрок",
-    lbColScore: "Заработано",
+    lbColScore: "Монеты",
     lbColCards: "Карты",
     lbColDate: "Дата",
     rewardInverseTip: "Слабее колода -> выше награда (обратно пропорционально силе)",

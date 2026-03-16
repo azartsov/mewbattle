@@ -14,6 +14,7 @@ import {
   BATTLE_ENTRY_COST,
   BOOSTER_OFFERS,
   DECK_SLOT_KEYS,
+  ensureNicknameFromEmail,
   ensureDefaultDeckSlots,
   fetchCards,
   fetchLeaderboard,
@@ -29,11 +30,13 @@ import {
   saveBattleLog,
   saveDeckToSlot,
   sellUserCardForCoins,
+  syncLeaderboardAfterBattle,
 } from "@/lib/mew-firestore"
 import type { BattleLogEntry, Deck, FighterCard, MewCard, UserCard, UserProfile } from "@/lib/mew-types"
 import type { BoosterOpenResult, DeckSlotKey, BoosterOffer, LeaderboardEntry, UserBattleLog } from "@/lib/mew-firestore"
 import { CardCollection } from "@/components/mew/card-collection"
 import { DeckBuilder } from "@/components/mew/deck-builder"
+import { UnsavedDeckDialog } from "@/components/mew/unsaved-deck-dialog"
 import { BoosterShop } from "@/components/mew/booster-shop"
 import { BattleArena } from "@/components/mew/battle-arena"
 import { BattleFighterCard } from "@/components/mew/battle-fighter-card"
@@ -41,9 +44,11 @@ import { MewCardFace } from "@/components/mew/mew-card-face"
 import { CoinPawBadge } from "@/components/mew/coin-paw-badge"
 import { HelpPanel } from "@/components/mew/help-panel"
 import { LanguageToggle } from "@/components/mew/language-toggle"
+import { PawLoader } from "@/components/mew/paw-loader"
 import { PreAuthUkiyoeSplash } from "@/components/mew/pre-auth-ukiyoe-splash"
 import { useMewI18n } from "@/lib/mew-i18n"
 import { pickRandomBoss, scaleBossForPlayer } from "@/lib/mew-bosses"
+import { APP_VERSION } from "@/lib/version"
 
 type TabKey = "collection" | "deck" | "boosters" | "battle" | "help"
 type BattleStage = "idle" | "preparing" | "fighting" | "completed"
@@ -137,6 +142,8 @@ export default function MewBattlePage() {
   const [battleBoss, setBattleBoss] = useState<FighterCard | null>(null)
   const [battleDeckSlot, setBattleDeckSlot] = useState<DeckSlotKey | null>(null)
   const [previewDeckSlot, setPreviewDeckSlot] = useState<DeckSlotKey | null>(null)
+  const [enteringBattle, setEnteringBattle] = useState(false)
+  const [startingBattle, setStartingBattle] = useState(false)
   const [battleSessionId, setBattleSessionId] = useState(0)
   const [lastBattleBossId, setLastBattleBossId] = useState<string | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -152,6 +159,11 @@ export default function MewBattlePage() {
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [leaderboardLoading, setLeaderboardLoading] = useState(false)
+  const [deckDraft, setDeckDraft] = useState<{ name: string; cardIds: string[] } | null>(null)
+  const [deckDirty, setDeckDirty] = useState(false)
+  const [showUnsavedDeckDialog, setShowUnsavedDeckDialog] = useState(false)
+  const [pendingTabSwitch, setPendingTabSwitch] = useState<TabKey | null>(null)
+  const [savingUnsavedDeck, setSavingUnsavedDeck] = useState(false)
 
   const userId = user?.uid ?? null
 
@@ -165,6 +177,7 @@ export default function MewBattlePage() {
       setLoadingData(true)
     }
     try {
+      await ensureNicknameFromEmail(userId, user?.email ?? undefined)
       await ensureDefaultDeckSlots(userId)
 
       const [allCards, owned, loadedDecks, userProfile, battles] = await Promise.all([
@@ -194,7 +207,7 @@ export default function MewBattlePage() {
     } finally {
       setLoadingData(false)
     }
-  }, [userId])
+  }, [user?.email, userId])
 
   useEffect(() => {
     if (!loading && userId) {
@@ -207,12 +220,74 @@ export default function MewBattlePage() {
     [decks, selectedDeckSlot],
   )
 
+  const battleLocked = battleStage === "preparing" || battleStage === "fighting"
+  const globalLoaderLabel = resetting
+    ? t.resetToInitial
+    : savingUnsavedDeck
+      ? t.savingDeck
+      : loadingData
+        ? t.loadingData
+        : null
+
   const handleSaveDeck = useCallback(async (name: string, cardIds: string[]) => {
     if (!userId) return
     await saveDeckToSlot(userId, selectedDeckSlot, name, cardIds, profile?.maxDeckSize ?? 3)
     await loadData()
     setMessage(t.deckSaved)
   }, [loadData, profile?.maxDeckSize, selectedDeckSlot, t.deckSaved, userId])
+
+  const handleTabChange = useCallback(async (nextTab: TabKey) => {
+    if (battleLocked && nextTab !== "battle") return
+    if (nextTab === tab) return
+
+    if (tab === "deck" && nextTab !== "deck" && deckDirty) {
+      setPendingTabSwitch(nextTab)
+      setShowUnsavedDeckDialog(true)
+      return
+    }
+
+    setTab(nextTab)
+  }, [battleLocked, deckDirty, tab])
+
+  const handleUnsavedStay = useCallback(() => {
+    setShowUnsavedDeckDialog(false)
+    setPendingTabSwitch(null)
+  }, [])
+
+  const handleUnsavedDiscard = useCallback(() => {
+    const nextTab = pendingTabSwitch
+    setShowUnsavedDeckDialog(false)
+    setPendingTabSwitch(null)
+    setDeckDirty(false)
+    setDeckDraft(null)
+    if (nextTab) setTab(nextTab)
+  }, [pendingTabSwitch])
+
+  const handleUnsavedSave = useCallback(async () => {
+    const nextTab = pendingTabSwitch
+    if (!nextTab) {
+      setShowUnsavedDeckDialog(false)
+      return
+    }
+    if (!deckDraft || !userId) {
+      setShowUnsavedDeckDialog(false)
+      setPendingTabSwitch(null)
+      return
+    }
+
+    setSavingUnsavedDeck(true)
+    try {
+      await handleSaveDeck(deckDraft.name, deckDraft.cardIds)
+      setDeckDirty(false)
+      setShowUnsavedDeckDialog(false)
+      setPendingTabSwitch(null)
+      setTab(nextTab)
+    } catch {
+      setMessage("Failed to save deck")
+    } finally {
+      setSavingUnsavedDeck(false)
+    }
+  }, [deckDraft, handleSaveDeck, pendingTabSwitch, userId])
 
   const handleOpenBooster = useCallback(async (offerId: BoosterOffer["id"]) => {
     if (!userId) {
@@ -321,6 +396,20 @@ export default function MewBattlePage() {
       .slice(0, profile?.maxDeckSize ?? 3)
   }, [cards, profile?.maxDeckSize, selectedDeck, userCards])
 
+  const selectedDeckCardIds = useMemo(() => selectedDeckCards.map((card) => card.id), [selectedDeckCards])
+
+  const handleDeckDraftChange = useCallback((name: string, cardIds: string[]) => {
+    setDeckDraft((prev) => {
+      if (!prev) return { name, cardIds }
+      if (prev.name !== name) return { name, cardIds }
+      if (prev.cardIds.length !== cardIds.length) return { name, cardIds }
+      for (let i = 0; i < cardIds.length; i += 1) {
+        if (prev.cardIds[i] !== cardIds[i]) return { name, cardIds }
+      }
+      return prev
+    })
+  }, [])
+
   const ownedCardIds = useMemo(() => new Set(userCards.filter((c) => c.quantity > 0).map((c) => c.cardId)), [userCards])
 
   const cardsById = useMemo(() => new Map(cards.map((card) => [card.id, card])), [cards])
@@ -413,19 +502,20 @@ export default function MewBattlePage() {
       createdAt: Date.now(),
     })
 
+    await syncLeaderboardAfterBattle(userId, user?.email ?? undefined)
+
     await loadData()
     setMessage(`${didWin ? t.battleSavedWin : t.battleSavedLoss}: +${settled}`)
-  }, [loadData, pendingBattleWinReward, t.battleSavedLoss, t.battleSavedWin, userId])
+  }, [loadData, pendingBattleWinReward, t.battleSavedLoss, t.battleSavedWin, user?.email, userId])
 
   const playerPower = useMemo(() => {
     if (!profile) return 0
-    const winsFactor = profile.wins / 9
-    const streakFactor = profile.streak / 3
-    const economyFactor = Math.log10(Math.max(1, profile.totalEarned + 1))
-    return Math.max(0, Math.min(10, winsFactor + streakFactor + economyFactor - 1))
+    const winsFactor = profile.wins / 8
+    const streakFactor = profile.streak / 4
+    const earnedBeyondStart = Math.max(0, profile.totalEarned - 500)
+    const economyFactor = Math.log10(earnedBeyondStart + 1) * 0.9
+    return Math.max(0, Math.min(10, winsFactor + streakFactor + economyFactor))
   }, [profile])
-
-  const battleLocked = battleStage === "preparing" || battleStage === "fighting"
 
   // Банкротство: следим за профилем и картами, показываем предупреждение когда бой завершён
   useEffect(() => {
@@ -447,12 +537,12 @@ export default function MewBattlePage() {
       setBattleDeckSlot(null)
       setPreviewDeckSlot(null)
       setRecentlyDroppedCounts(new Map())
-      setMessage(null)
       await loadData()
+      setMessage(t.battleHistoryCleared)
     } finally {
       setResetting(false)
     }
-  }, [loadData, userId])
+  }, [loadData, t.battleHistoryCleared, userId])
 
   const loadLeaderboard = useCallback(async () => {
     setLeaderboardLoading(true)
@@ -466,35 +556,46 @@ export default function MewBattlePage() {
 
   const handleEnterBattle = async () => {
     if (!userId) return
+    setEnteringBattle(true)
     try {
       await payBattleEntry(userId, BATTLE_ENTRY_COST)
     } catch {
       setMessage(`Недостаточно монет: нужно ${BATTLE_ENTRY_COST}`)
       setShowBankruptcyWarning(true)
+      setEnteringBattle(false)
       return
     }
 
-    const randomBoss = pickRandomBoss(lastBattleBossId ?? undefined)
-    const scaledBoss = scaleBossForPlayer(randomBoss, playerPower)
+    try {
+      const randomBoss = pickRandomBoss(lastBattleBossId ?? undefined)
+      const scaledBoss = scaleBossForPlayer(randomBoss, playerPower)
 
-    await loadData(false)
-    setBattleBoss(scaledBoss)
-    setLastBattleBossId(randomBoss.id)
-    setBattleDeckSlot(null)
-    setPreviewDeckSlot(null)
-    setShowBankruptcyWarning(false)
-    setBattleStage("preparing")
-    setBattleSessionId((id) => id + 1)
-    setTab("battle")
+      await loadData(false)
+      setBattleBoss(scaledBoss)
+      setLastBattleBossId(randomBoss.id)
+      setBattleDeckSlot(null)
+      setPreviewDeckSlot(null)
+      setShowBankruptcyWarning(false)
+      setBattleStage("preparing")
+      setBattleSessionId((id) => id + 1)
+      setTab("battle")
+    } finally {
+      setEnteringBattle(false)
+    }
   }
 
   const handleStartBattle = async () => {
     if (!battleDeckSlot) return
     if ((battleDeckCardsBySlot.get(battleDeckSlot) ?? []).length === 0) return
-    const winReward = Math.floor(Math.random() * (battleRewardRange.max - battleRewardRange.min + 1)) + battleRewardRange.min
-    setPendingBattleWinReward(winReward)
-    await loadData()
-    setBattleStage("fighting")
+    setStartingBattle(true)
+    try {
+      const winReward = Math.floor(Math.random() * (battleRewardRange.max - battleRewardRange.min + 1)) + battleRewardRange.min
+      setPendingBattleWinReward(winReward)
+      await loadData()
+      setBattleStage("fighting")
+    } finally {
+      setStartingBattle(false)
+    }
   }
 
   const handleBattleResolved = () => {
@@ -505,7 +606,11 @@ export default function MewBattlePage() {
   }
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <PawLoader label={t.loadingData} size="lg" />
+      </div>
+    )
   }
 
   if (!user && !isGuest) {
@@ -527,6 +632,8 @@ export default function MewBattlePage() {
 
   return (
     <div className="min-h-screen bg-background">
+      {globalLoaderLabel ? <PawLoader overlay size="lg" label={globalLoaderLabel} /> : null}
+
       <header className="border-b border-border bg-card/70 backdrop-blur sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -574,6 +681,10 @@ export default function MewBattlePage() {
                   <LogOut className="h-4 w-4" />
                   {t.logout}
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem disabled className="cursor-default opacity-70 focus:bg-transparent">
+                  v{APP_VERSION}
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -601,7 +712,12 @@ export default function MewBattlePage() {
               onClick={handleReset}
               className="w-full"
             >
-              {resetting ? "..." : t.bankruptcyReset}
+              {resetting ? (
+                <>
+                  <PawLoader size="sm" />
+                  {t.bankruptcyReset}
+                </>
+              ) : t.bankruptcyReset}
             </Button>
           </Card>
         )}
@@ -708,8 +824,7 @@ export default function MewBattlePage() {
                 variant={tab === item.key ? "default" : "outline"}
                 size="sm"
                 onClick={() => {
-                  if (battleLocked && item.key !== "battle") return
-                  setTab(item.key)
+                  void handleTabChange(item.key)
                 }}
                 disabled={battleLocked && item.key !== "battle"}
                 className={`rounded-full px-2.5 h-8 gap-1.5 ${tab === item.key ? "" : item.tone}`}
@@ -724,7 +839,9 @@ export default function MewBattlePage() {
         </div>
 
         {loadingData ? (
-          <Card className="p-4">{t.loadingData}</Card>
+          <Card className="p-8 border-amber-500/20 bg-gradient-to-br from-card via-card to-amber-500/5">
+            <PawLoader label={t.loadingData} size="lg" />
+          </Card>
         ) : (
           <>
             {tab === "collection" && (
@@ -749,9 +866,11 @@ export default function MewBattlePage() {
                 ]}
                 selectedDeckSlot={selectedDeckSlot}
                 initialDeckName={selectedDeck?.deckName ?? getDefaultDeckName(selectedDeckSlot)}
-                initialDeckCardIds={selectedDeckCards.map((card) => card.id)}
+                initialDeckCardIds={selectedDeckCardIds}
                 onSelectDeckSlot={setSelectedDeckSlot}
                 onSaveDeck={handleSaveDeck}
+                onDraftChange={handleDeckDraftChange}
+                onDirtyChange={setDeckDirty}
               />
             )}
             {tab === "boosters" && userId && (
@@ -773,10 +892,19 @@ export default function MewBattlePage() {
                       size="sm"
                       className="rounded-full"
                       onClick={() => void handleEnterBattle()}
-                      disabled={battleLocked}
+                      disabled={battleLocked || enteringBattle || startingBattle}
                     >
-                      <Play className="h-3.5 w-3.5" />
-                      Вступаем в бой
+                      {enteringBattle ? (
+                        <>
+                          <PawLoader size="sm" />
+                          Вступаем в бой
+                        </>
+                      ) : (
+                        <>
+                          <Play className="h-3.5 w-3.5" />
+                          Вступаем в бой
+                        </>
+                      )}
                     </Button>
                   </div>
 
@@ -811,8 +939,8 @@ export default function MewBattlePage() {
                                 </Button>
                                 {isSelected && previewDeckCards.length > 0 && (
                                   <div className="flex flex-wrap gap-1.5 rounded-xl border border-border/60 bg-card/40 p-2">
-                                    {previewDeckCards.map((card) => (
-                                      <MewCardFace key={`preview-${slotKey}-${card.id}`} card={card} compact className="max-w-[130px]" />
+                                    {previewDeckCards.map((card, idx) => (
+                                      <MewCardFace key={`preview-${slotKey}-${card.id}-${idx}`} card={card} compact className="max-w-[130px]" />
                                     ))}
                                   </div>
                                 )}
@@ -836,10 +964,19 @@ export default function MewBattlePage() {
                           size="sm"
                           className="rounded-full"
                           onClick={handleStartBattle}
-                          disabled={!battleDeckSlot || (battleDeckCardsBySlot.get(battleDeckSlot)?.length ?? 0) === 0}
+                          disabled={startingBattle || enteringBattle || !battleDeckSlot || (battleDeckCardsBySlot.get(battleDeckSlot)?.length ?? 0) === 0}
                         >
-                          <Play className="h-3.5 w-3.5" />
-                          {t.startBattle}
+                          {startingBattle ? (
+                            <>
+                              <PawLoader size="sm" />
+                              {t.startBattle}
+                            </>
+                          ) : (
+                            <>
+                              <Play className="h-3.5 w-3.5" />
+                              {t.startBattle}
+                            </>
+                          )}
                         </Button>
                       </div>
                     </div>
@@ -880,7 +1017,12 @@ export default function MewBattlePage() {
                 disabled={resetting}
                 onClick={async () => { await handleReset(); setShowResetDialog(false) }}
               >
-                {resetting ? "..." : t.resetToInitial}
+                {resetting ? (
+                  <>
+                    <PawLoader size="sm" />
+                    {t.resetToInitial}
+                  </>
+                ) : t.resetToInitial}
               </Button>
             </div>
           </DialogContent>
@@ -894,7 +1036,9 @@ export default function MewBattlePage() {
             <DialogTitle className='font-["Trebuchet_MS","Verdana",sans-serif] text-amber-100'>{t.leaderboardTitle}</DialogTitle>
           </DialogHeader>
           {leaderboardLoading ? (
-            <p className="text-sm text-muted-foreground">{t.loadingData}</p>
+            <div className="flex min-h-[180px] items-center justify-center">
+              <PawLoader label={t.loadingData} size="md" />
+            </div>
           ) : leaderboard.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t.leaderboardEmpty}</p>
           ) : (
@@ -917,7 +1061,7 @@ export default function MewBattlePage() {
                     >
                       <td className="py-1 text-muted-foreground">{idx + 1}</td>
                       <td className="py-1">{entry.nickname}</td>
-                      <td className="py-1 text-right">{entry.totalEarned}</td>
+                      <td className="py-1 text-right">{entry.scoreCoins}</td>
                       <td className="py-1 text-right">{entry.cardCount}</td>
                       <td className="py-1 text-right text-xs text-muted-foreground">
                         {entry.updatedAtMs ? new Date(entry.updatedAtMs).toLocaleDateString() : "—"}
@@ -930,6 +1074,23 @@ export default function MewBattlePage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <UnsavedDeckDialog
+        open={showUnsavedDeckDialog}
+        onOpenChange={(open) => {
+          setShowUnsavedDeckDialog(open)
+          if (!open) setPendingTabSwitch(null)
+        }}
+        title={t.deckUnsavedTitle}
+        description={t.deckUnsavedDesc}
+        stayLabel={t.deckUnsavedStay}
+        discardLabel={t.deckUnsavedDiscard}
+        saveLabel={t.deckUnsavedSave}
+        saving={savingUnsavedDeck}
+        onStay={handleUnsavedStay}
+        onDiscard={handleUnsavedDiscard}
+        onSave={() => void handleUnsavedSave()}
+      />
     </div>
   )
 }
