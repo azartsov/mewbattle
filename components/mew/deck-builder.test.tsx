@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 
 import React, { useCallback, useMemo, useState } from "react"
-import { act } from "react"
 import { createRoot } from "react-dom/client"
+import { act as domAct } from "react-dom/test-utils"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { DeckBuilder } from "@/components/mew/deck-builder"
 import type { MewCard, UserCard } from "@/lib/mew-types"
+
+const act = (React as unknown as { act?: typeof domAct }).act ?? domAct
 
 vi.mock("@/components/ui/button", () => ({
   Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => <button {...props}>{children}</button>,
