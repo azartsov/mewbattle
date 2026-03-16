@@ -2,11 +2,9 @@
 
 import React from "react"
 import { createRoot } from "react-dom/client"
-import { act as domAct } from "react-dom/test-utils"
+import { flushSync } from "react-dom"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { UnsavedDeckDialog } from "@/components/mew/unsaved-deck-dialog"
-
-const act = (React as unknown as { act?: typeof domAct }).act ?? domAct
 
 vi.mock("@/components/ui/button", () => ({
   Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => <button {...props}>{children}</button>,
@@ -38,7 +36,7 @@ describe("UnsavedDeckDialog", () => {
     document.body.appendChild(container)
     const root = createRoot(container)
 
-    await act(async () => {
+    flushSync(() => {
       root.render(
         <UnsavedDeckDialog
           open
@@ -58,7 +56,7 @@ describe("UnsavedDeckDialog", () => {
     const buttons = Array.from(container.querySelectorAll("button"))
     expect(buttons.map((button) => button.textContent)).toEqual(["Stay", "Don't Save", "Save"])
 
-    await act(async () => {
+    flushSync(() => {
       buttons[0]?.click()
       buttons[1]?.click()
       buttons[2]?.click()
@@ -68,7 +66,7 @@ describe("UnsavedDeckDialog", () => {
     expect(onDiscard).toHaveBeenCalledTimes(1)
     expect(onSave).toHaveBeenCalledTimes(1)
 
-    await act(async () => {
+    flushSync(() => {
       root.unmount()
     })
   })
@@ -80,7 +78,7 @@ describe("UnsavedDeckDialog", () => {
     document.body.appendChild(container)
     const root = createRoot(container)
 
-    await act(async () => {
+    flushSync(() => {
       root.render(
         <UnsavedDeckDialog
           open
@@ -104,13 +102,13 @@ describe("UnsavedDeckDialog", () => {
     expect(saveButton?.textContent).toContain("Save")
     expect(container.querySelector('[data-testid="paw-loader"]')).not.toBeNull()
 
-    await act(async () => {
+    flushSync(() => {
       saveButton?.click()
     })
 
     expect(onSave).not.toHaveBeenCalled()
 
-    await act(async () => {
+    flushSync(() => {
       root.unmount()
     })
   })

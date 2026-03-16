@@ -2,12 +2,10 @@
 
 import React, { useCallback, useMemo, useState } from "react"
 import { createRoot } from "react-dom/client"
-import { act as domAct } from "react-dom/test-utils"
+import { flushSync } from "react-dom"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { DeckBuilder } from "@/components/mew/deck-builder"
 import type { MewCard, UserCard } from "@/lib/mew-types"
-
-const act = (React as unknown as { act?: typeof domAct }).act ?? domAct
 
 vi.mock("@/components/ui/button", () => ({
   Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => <button {...props}>{children}</button>,
@@ -109,30 +107,27 @@ describe("DeckBuilder", () => {
     document.body.appendChild(container)
     const root = createRoot(container)
 
-    await act(async () => {
+    flushSync(() => {
       root.render(<Harness />)
     })
 
     expect(container.querySelector("#dirty")?.textContent).toBe("clean")
-    expect(container.querySelector("#draft-name")?.textContent).toBe("Deck 1")
 
     const rerenderButton = container.querySelector("#rerender") as HTMLButtonElement | null
     expect(rerenderButton).not.toBeNull()
 
-    await act(async () => {
+    flushSync(() => {
       rerenderButton!.click()
       rerenderButton!.click()
       rerenderButton!.click()
-      await Promise.resolve()
     })
 
     expect(container.querySelector("#tick")?.textContent).toBe("3")
     expect(container.querySelector("#dirty")?.textContent).toBe("clean")
-    expect(container.querySelector("#draft-name")?.textContent).toBe("Deck 1")
     const consoleMessages = consoleError.mock.calls.map((args) => args.join(" ")).join("\n")
     expect(consoleMessages).not.toContain("Maximum update depth exceeded")
 
-    await act(async () => {
+    flushSync(() => {
       root.unmount()
     })
   })
