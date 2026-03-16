@@ -49,20 +49,10 @@ import { PreAuthUkiyoeSplash } from "@/components/mew/pre-auth-ukiyoe-splash"
 import { useMewI18n } from "@/lib/mew-i18n"
 import { pickRandomBoss, scaleBossForPlayer } from "@/lib/mew-bosses"
 import { APP_VERSION } from "@/lib/version"
+import { pickCatCodexQuote } from "@/lib/cat-codex"
 
 type TabKey = "collection" | "deck" | "boosters" | "battle" | "help"
 type BattleStage = "idle" | "preparing" | "fighting" | "completed"
-
-const CAT_CODEX_QUOTES = [
-  "«Путь Кота — это сон. В ситуации \"или-или\" без колебаний выбирай сон».",
-  "«Каждое утро думай о том, не поспать ли мне еще. Каждый вечер освежай свой ум мыслями о сладком сне».",
-  "«Ищи недостатки у других, а не у себя».",
-  "«Подумав — передумай, а передумав — подумай».",
-  "«Лень Кота тяжелей горы, а Сон легче пуха».",
-  "«Семь раз упади — восемь раз поспи».",
-  "«Умный Кот прячет свои когти».",
-  "«Не говори плохо о себе. Ибо Кот внутри тебя слышит твои слова и его тошнит от них».",
-] as const
 
 function AuthScreen() {
   const { signIn, signUp, enterGuestMode, error } = useAuth()
@@ -143,7 +133,7 @@ function AuthScreen() {
 
 export default function MewBattlePage() {
   const { user, isGuest, loading, signOut } = useAuth()
-  const { t } = useMewI18n()
+  const { t, language } = useMewI18n()
   const [tab, setTab] = useState<TabKey>("collection")
   const [cards, setCards] = useState<MewCard[]>([])
   const [userCards, setUserCards] = useState<UserCard[]>([])
@@ -179,9 +169,9 @@ export default function MewBattlePage() {
   const userId = user?.uid ?? null
 
   const catCodexQuote = useMemo(() => {
-    const idx = Math.floor(Math.random() * CAT_CODEX_QUOTES.length)
-    return CAT_CODEX_QUOTES[idx] ?? CAT_CODEX_QUOTES[0]
-  }, [battleSessionId])
+    // Deterministic per battle session to avoid SSR/client hydration mismatches.
+    return pickCatCodexQuote(language, battleSessionId)
+  }, [battleSessionId, language])
 
   const loadData = useCallback(async (showSpinner = true) => {
     if (!userId) {
@@ -922,9 +912,7 @@ export default function MewBattlePage() {
                     <div>
                       <h2 className="text-lg font-semibold">{t.battleArena}</h2>
                       <p className="text-sm text-muted-foreground">
-                        {battleLocked
-                          ? "Бой запущен: выйти можно только после завершения."
-                          : "Нажмите «Вступаем в бой», чтобы получить случайного босса."}
+                        {battleLocked ? t.battleLockedHint : t.battleEnterHint}
                       </p>
                     </div>
                     <Button
@@ -936,12 +924,12 @@ export default function MewBattlePage() {
                       {enteringBattle ? (
                         <>
                           <PawLoader size="sm" />
-                          Вступаем в бой
+                          {t.enteringBattle}
                         </>
                       ) : (
                         <>
                           <Play className="h-3.5 w-3.5" />
-                          Вступаем в бой
+                          {t.enterBattle}
                         </>
                       )}
                     </Button>

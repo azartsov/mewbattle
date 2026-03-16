@@ -5,6 +5,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { LanguageToggle } from "@/components/mew/language-toggle"
 import { useMewI18n } from "@/lib/mew-i18n"
+import { pickCatCodexQuote, pickCatCodexQuoteRandom } from "@/lib/cat-codex"
 
 interface PreAuthUkiyoeSplashProps {
   onEnter: () => void
@@ -94,7 +95,13 @@ const BLOSSOM_POSITIONS: [number, number][] = [
 ]
 
 export function PreAuthUkiyoeSplash({ onEnter }: PreAuthUkiyoeSplashProps) {
-  const { t } = useMewI18n()
+  const { t, language } = useMewI18n()
+  const [codexQuote, setCodexQuote] = useState(() => pickCatCodexQuote(language, 0))
+
+  useEffect(() => {
+    // Client-only randomization to avoid hydration mismatch.
+    setCodexQuote(pickCatCodexQuoteRandom(language))
+  }, [language])
 
   return (
     <div className="absolute inset-0 overflow-hidden">
@@ -244,7 +251,12 @@ export function PreAuthUkiyoeSplash({ onEnter }: PreAuthUkiyoeSplashProps) {
           <h1 className='text-2xl font-black tracking-wide text-amber-100 font-["Trebuchet_MS","Verdana",sans-serif]'>
             {t.splashTitle}
           </h1>
-          <p className="mt-1.5 text-sm text-amber-50/80">{t.splashSubtitle}</p>
+
+          <div className="mt-3 space-y-1">
+            <p className="text-sm italic leading-relaxed text-amber-50/85">{codexQuote}</p>
+            <p className="text-[11px] text-amber-200/70">— {t.catCodexAttribution}</p>
+          </div>
+
           <p className="mt-2 text-xs uppercase tracking-[0.18em] text-amber-200/80">{t.splashHint}</p>
           <Button
             className="mt-3 h-8 rounded-full bg-amber-500 px-5 text-xs font-semibold text-slate-950 hover:bg-amber-400"

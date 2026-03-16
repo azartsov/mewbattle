@@ -158,6 +158,10 @@ type MewTranslations = {
   bossTurnCountdown: string
   logout: string
   catCodexAttribution: string
+  battleLockedHint: string
+  battleEnterHint: string
+  enterBattle: string
+  enteringBattle: string
 }
 
 const translations: Record<MewLanguage, MewTranslations> = {
@@ -314,7 +318,11 @@ const translations: Record<MewLanguage, MewTranslations> = {
     deckPotentialReward: "Estimated battle reward",
     bossTurnCountdown: "Boss is choosing target...",
     logout: "Logout",
-    catCodexAttribution: "quote from the Cat Codex",
+    catCodexAttribution: "quote from the Cat Codex-Do",
+    battleLockedHint: "Battle is in progress: you can leave only after it ends.",
+    battleEnterHint: "Press \"Enter battle\" to get a random boss.",
+    enterBattle: "Enter battle",
+    enteringBattle: "Entering battle",
   },
   ru: {
     appTitle: "MewBattle",
@@ -469,7 +477,11 @@ const translations: Record<MewLanguage, MewTranslations> = {
     deckPotentialReward: "Ожидаемая награда за бой",
     bossTurnCountdown: "Босс выбирает цель...",
     logout: "Выйти",
-    catCodexAttribution: "цитата из Кодекса Кота",
+    catCodexAttribution: "цитата из Кодекса Кота-До",
+    battleLockedHint: "Бой запущен: выйти можно только после завершения.",
+    battleEnterHint: "Нажмите «Вступаем в бой», чтобы получить случайного босса.",
+    enterBattle: "Вступаем в бой",
+    enteringBattle: "Вступаем в бой",
   },
 }
 
