@@ -146,6 +146,15 @@ type MewTranslations = {
   lbColCards: string
   lbColDate: string
   rewardInverseTip: string
+  battleHpBonus: string
+  battleBase: string
+  battleHpBonusDetail: string
+  paramSellPriceDesc: string
+  helpEconomyTitle: string
+  helpBattleTitle: string
+  helpRewardRules: string
+  deckPotentialReward: string
+  bossTurnCountdown: string
   logout: string
 }
 
@@ -292,6 +301,15 @@ const translations: Record<MewLanguage, MewTranslations> = {
     lbColCards: "Cards",
     lbColDate: "Date",
     rewardInverseTip: "Weaker deck -> higher reward (inversely proportional to deck strength)",
+    battleHpBonus: "HP Bonus",
+    battleBase: "Base",
+    battleHpBonusDetail: "Remaining HP in your surviving cats is added to battle reward",
+    paramSellPriceDesc: "Sell price for one duplicate (keep at least one copy)",
+    helpEconomyTitle: "Economy",
+    helpBattleTitle: "Battle Controls",
+    helpRewardRules: "Reward formula: base reward (50–200, weaker deck → higher) + total remaining HP of surviving cats after battle.",
+    deckPotentialReward: "Estimated battle reward",
+    bossTurnCountdown: "Boss is choosing target...",
     logout: "Logout",
   },
   ru: {
@@ -436,6 +454,15 @@ const translations: Record<MewLanguage, MewTranslations> = {
     lbColCards: "Карты",
     lbColDate: "Дата",
     rewardInverseTip: "Слабее колода -> выше награда (обратно пропорционально силе)",
+    battleHpBonus: "Бонус ОЗ",
+    battleBase: "База",
+    battleHpBonusDetail: "Суммарное оставшееся здоровье живых котов добавляется к награде за бой",
+    paramSellPriceDesc: "Цена продажи одного дубликата (минимум одна копия остаётся)",
+    helpEconomyTitle: "Экономика",
+    helpBattleTitle: "Управление боем",
+    helpRewardRules: "Формула награды: базовая (50–200, слабее колода → больше) + суммарное оставшееся ОЗ выживших котов после боя.",
+    deckPotentialReward: "Ожидаемая награда за бой",
+    bossTurnCountdown: "Босс выбирает цель...",
     logout: "Выйти",
   },
 }

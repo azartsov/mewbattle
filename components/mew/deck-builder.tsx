@@ -21,6 +21,7 @@ interface DeckBuilderProps {
   onSaveDeck: (name: string, cardIds: string[]) => Promise<void>
   onDraftChange?: (name: string, cardIds: string[]) => void
   onDirtyChange?: (isDirty: boolean) => void
+  potentialReward?: number
 }
 
 export function DeckBuilder({
@@ -35,6 +36,7 @@ export function DeckBuilder({
   onSaveDeck,
   onDraftChange,
   onDirtyChange,
+  potentialReward,
 }: DeckBuilderProps) {
   const { t } = useMewI18n()
   const [deckName, setDeckName] = useState(initialDeckName)
@@ -153,7 +155,12 @@ export function DeckBuilder({
 
       <Card className="p-3 bg-card border-border">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="font-semibold">{t.myDeck} (max {maxDeckSize})</h3>
+          <div>
+            <h3 className="font-semibold">{t.myDeck} (max {maxDeckSize})</h3>
+            {potentialReward !== undefined && (
+              <p className="text-xs text-muted-foreground">{t.deckPotentialReward}: <span className="font-medium text-amber-300">{potentialReward} {t.coins}</span></p>
+            )}
+          </div>
           <Button size="sm" className="h-7 rounded-full px-3" onClick={handleSave} disabled={saving || deck.filter(Boolean).length === 0}>
             {saving ? (
               <>

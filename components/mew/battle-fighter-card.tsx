@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import Image from "next/image"
 import { Info } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -43,6 +44,8 @@ export function BattleFighterCard({
   const displayName = metaRu?.name ?? fighter.name
   const displayLore = metaRu?.lore ?? fighter.lore ?? fighter.ability
   const displayAbility = metaRu?.ability ?? fighter.ability
+  const fallbackSrc = role === "boss" ? "/bosses/evil_raven.svg" : "/cards/cat_knight.svg"
+  const [imgSrc, setImgSrc] = useState(fighter.imageUrl || fallbackSrc)
 
   const bossTypeLabel = (bossType: "raven" | "dog" | "rat") => {
     if (bossType === "raven") return t.bossRaven
@@ -80,11 +83,12 @@ export function BattleFighterCard({
     >
       <div className="relative">
         <Image
-          src={fighter.imageUrl || (role === "boss" ? "/bosses/evil_raven.svg" : "/cards/cat_knight.svg")}
+          src={imgSrc}
           alt={fighter.name}
           width={320}
           height={180}
           className="h-[78px] w-full object-cover"
+          onError={() => setImgSrc(fallbackSrc)}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent" />
         <span className="absolute left-2 top-2 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-slate-100">
@@ -122,27 +126,42 @@ export function BattleFighterCard({
                 <p className="mt-1 text-sm text-foreground/90">{displayLore}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">{t.paramList}</p>
-                <ul className="mt-1 space-y-1 text-xs text-foreground/85">
-                  <li>ATK {fighter.attack} - {t.paramAttackDesc}</li>
-                  <li>HP {fighter.currentHealth}/{fighter.health} - {t.paramHealthDesc}</li>
-                  <li>{displayAbility} - {t.paramAbilityDesc}</li>
-                  {fighter.bossType && <li>{t.bossType}: {bossTypeLabel(fighter.bossType)}</li>}
-                </ul>
-              </div>
-              {fighter.bossAffinities && fighter.bossAffinities.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {fighter.bossAffinities.map((affinity) => (
-                    <span
-                      key={`${fighter.id}-${affinity.bossType}`}
-                      className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs", BOSS_TYPE_THEME[affinity.bossType].chipClass)}
-                    >
-                      <Image src={BOSS_TYPE_ICON[affinity.bossType]} alt={bossTypeLabel(affinity.bossType)} width={14} height={14} className="rounded-sm" />
-                      {bossTypeLabel(affinity.bossType)} Lv{affinity.level}
-                    </span>
-                  ))}
+                <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">{t.paramList}</p>
+                <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2.5 items-center text-xs">
+                  <span className="rounded-md bg-rose-500/15 px-2 py-1 font-medium text-rose-200">ATK {fighter.attack}</span>
+                  <span className="text-foreground/85">{t.paramAttackDesc}</span>
+
+                  <span className="rounded-md bg-emerald-500/15 px-2 py-1 font-medium text-emerald-200">HP {fighter.currentHealth}/{fighter.health}</span>
+                  <span className="text-foreground/85">{t.paramHealthDesc}</span>
+
+                  <span className="rounded border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 text-sky-200">{displayAbility}</span>
+                  <span className="text-foreground/85">{t.paramAbilityDesc}</span>
+
+                  {fighter.bossType && (
+                    <>
+                      <span className="rounded bg-rose-500/15 border border-rose-400/30 px-2 py-0.5 font-medium text-rose-200">{bossTypeLabel(fighter.bossType)}</span>
+                      <span className="text-foreground/85">{t.bossType}</span>
+                    </>
+                  )}
+
+                  {fighter.bossAffinities && fighter.bossAffinities.length > 0 && (
+                    <>
+                      <div className="flex flex-wrap gap-1">
+                        {fighter.bossAffinities.map((affinity) => (
+                          <span
+                            key={`${fighter.id}-${affinity.bossType}`}
+                            className={cn("inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px]", BOSS_TYPE_THEME[affinity.bossType].chipClass)}
+                          >
+                            <Image src={BOSS_TYPE_ICON[affinity.bossType]} alt={bossTypeLabel(affinity.bossType)} width={12} height={12} className="rounded-sm" />
+                            {bossTypeLabel(affinity.bossType)} Lv{affinity.level}
+                          </span>
+                        ))}
+                      </div>
+                      <span className="text-foreground/85">{t.paramAffinityDesc}</span>
+                    </>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </DialogContent>
         </Dialog>

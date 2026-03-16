@@ -36,11 +36,12 @@ export function HelpPanel() {
         </div>
       </Card>
       <Card className="p-4 space-y-2 bg-card/90 border-border">
-        <h3 className="font-semibold">Economy</h3>
+        <h3 className="font-semibold">{t.helpEconomyTitle}</h3>
         <p className="text-sm text-muted-foreground">{t.helpEconomy}</p>
+        <p className="text-sm text-muted-foreground">{t.helpRewardRules}</p>
       </Card>
       <Card className="p-4 space-y-2 bg-card/90 border-border">
-        <h3 className="font-semibold">Battle Controls</h3>
+        <h3 className="font-semibold">{t.helpBattleTitle}</h3>
         <p className="text-sm text-muted-foreground">{t.helpBattle}</p>
       </Card>
       <Card className="p-4 space-y-3 bg-card/90 border-border">

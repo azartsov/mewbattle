@@ -486,12 +486,26 @@ export default function MewBattlePage() {
     return { min: Math.max(50, Math.min(200, reward)), max: Math.max(50, Math.min(200, reward)) }
   }, [battleDeckSlot, deckPowerBySlot])
 
-  const saveBattle = useCallback(async (winnerId: string, bossId: string, log: BattleLogEntry[]) => {
+  const deckBuilderPotentialReward = useMemo(() => {
+    const currentScore = deckPowerBySlot.get(selectedDeckSlot) ?? 0
+    const scores = DECK_SLOT_KEYS
+      .map((slot) => deckPowerBySlot.get(slot) ?? 0)
+      .filter((score) => score > 0)
+    if (scores.length === 0 || currentScore <= 0) return 200
+    const minScore = Math.min(...scores)
+    const maxScore = Math.max(...scores)
+    const span = maxScore - minScore
+    const normalized = span > 0 ? (currentScore - minScore) / span : 0.5
+    return Math.max(50, Math.min(200, Math.round(200 - normalized * 150)))
+  }, [selectedDeckSlot, deckPowerBySlot])
+
+  const saveBattle = useCallback(async (winnerId: string, bossId: string, log: BattleLogEntry[], hpBonus = 0) => {
     if (!userId) return
 
     const didWin = winnerId === "player"
-    const reward = didWin ? pendingBattleWinReward : 0
-    const settled = await awardBattleCoins(userId, didWin, reward)
+    const baseReward = didWin ? pendingBattleWinReward : 0
+    const totalReward = baseReward + (didWin ? hpBonus : 0)
+    const settled = await awardBattleCoins(userId, didWin, totalReward)
 
     await saveBattleLog({
       player1Id: userId,
@@ -505,8 +519,12 @@ export default function MewBattlePage() {
     await syncLeaderboardAfterBattle(userId, user?.email ?? undefined)
 
     await loadData()
-    setMessage(`${didWin ? t.battleSavedWin : t.battleSavedLoss}: +${settled}`)
-  }, [loadData, pendingBattleWinReward, t.battleSavedLoss, t.battleSavedWin, user?.email, userId])
+    if (didWin && hpBonus > 0) {
+      setMessage(`${t.battleSavedWin}: +${settled} (${t.battleBase}: ${baseReward} + ${t.battleHpBonus}: +${hpBonus})`)
+    } else {
+      setMessage(`${didWin ? t.battleSavedWin : t.battleSavedLoss}: +${settled}`)
+    }
+  }, [loadData, pendingBattleWinReward, t.battleBase, t.battleHpBonus, t.battleSavedLoss, t.battleSavedWin, user?.email, userId])
 
   const playerPower = useMemo(() => {
     if (!profile) return 0
@@ -871,6 +889,7 @@ export default function MewBattlePage() {
                 onSaveDeck={handleSaveDeck}
                 onDraftChange={handleDeckDraftChange}
                 onDirtyChange={setDeckDirty}
+                potentialReward={deckBuilderPotentialReward}
               />
             )}
             {tab === "boosters" && userId && (
@@ -952,7 +971,7 @@ export default function MewBattlePage() {
                         {battleDeckSlot && (battleDeckCardsBySlot.get(battleDeckSlot)?.length ?? 0) > 0 && (
                           <div className="space-y-0.5">
                             <p className="text-sm text-muted-foreground">
-                              Вход: {BATTLE_ENTRY_COST} монет (списывается при вступлении) · Выигрыш при победе: {battleRewardRange.min}
+                              {t.battleReward}: {battleRewardRange.min} + {t.battleHpBonus} · {t.battleBase} {BATTLE_ENTRY_COST} {t.coins}
                             </p>
                             <p className="text-xs text-muted-foreground/60">{t.rewardInverseTip}</p>
                           </div>

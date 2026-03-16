@@ -12,7 +12,7 @@ import { BOSS_TYPE_LABEL, pickRandomBoss } from "@/lib/mew-bosses"
 
 interface BattleArenaProps {
   deckCards: MewCard[]
-  onSaveBattle: (winnerId: string, bossId: string, log: BattleLogEntry[]) => Promise<void>
+  onSaveBattle: (winnerId: string, bossId: string, log: BattleLogEntry[], hpBonus: number) => Promise<void>
   deckName: string
   initialBoss?: FighterCard
   showResetButton?: boolean
@@ -95,6 +95,8 @@ export function BattleArena({
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [tapSelectedAllyId, setTapSelectedAllyId] = useState<string | null>(null)
   const [pendingBossTurn, setPendingBossTurn] = useState<PendingBossTurn | null>(null)
+  const [bossCountdownTick, setBossCountdownTick] = useState<number | null>(null)
+  const [bossTargetPreviewId, setBossTargetPreviewId] = useState<string | null>(null)
   const [shakeTargetId, setShakeTargetId] = useState<string | null>(null)
   const [flashTargetId, setFlashTargetId] = useState<string | null>(null)
   const [lightningFx, setLightningFx] = useState<ActiveLightningFx | null>(null)
@@ -107,6 +109,9 @@ export function BattleArena({
   const shakeTimeoutRef = useRef<number | null>(null)
   const flashTimeoutRef = useRef<number | null>(null)
   const damagePetalTimeoutsRef = useRef<number[]>([])
+  const fightersRef = useRef(fighters)
+  // keep refs in sync so countdown closures always see the latest values
+  useEffect(() => { fightersRef.current = fighters })
 
   const clearDamagePetalTimeouts = () => {
     damagePetalTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId))
@@ -132,6 +137,8 @@ export function BattleArena({
     setFlashTargetId(null)
     setLightningFx(null)
     setDamagePetals([])
+    setBossCountdownTick(null)
+    setBossTargetPreviewId(null)
   }, [createBoss, deckCards])
 
   useEffect(() => {
@@ -142,6 +149,49 @@ export function BattleArena({
       clearDamagePetalTimeouts()
     }
   }, [])
+
+  // Boss auto-targeting countdown: 3-2-1, then auto-resolve
+  const resolveBossTurnRef = useRef<(targetId: string) => Promise<void>>(async () => {})
+  useEffect(() => {
+    if (!pendingBossTurn) {
+      setBossCountdownTick(null)
+      setBossTargetPreviewId(null)
+      return
+    }
+
+    const alive = fightersRef.current.filter((f) => f.currentHealth > 0)
+    if (alive.length === 0) return
+
+    let cancelled = false
+    const pickRandom = () => alive[Math.floor(Math.random() * alive.length)].id
+
+    setBossCountdownTick(3)
+    setBossTargetPreviewId(pickRandom())
+
+    const flickerInterval = window.setInterval(() => {
+      if (!cancelled) setBossTargetPreviewId(pickRandom())
+    }, 280)
+
+    const t1 = window.setTimeout(() => { if (!cancelled) setBossCountdownTick(2) }, 1000)
+    const t2 = window.setTimeout(() => { if (!cancelled) setBossCountdownTick(1) }, 2000)
+    const tResolve = window.setTimeout(() => {
+      if (cancelled) return
+      window.clearInterval(flickerInterval)
+      const finalTarget = alive[Math.floor(Math.random() * alive.length)]
+      setBossCountdownTick(null)
+      setBossTargetPreviewId(null)
+      void resolveBossTurnRef.current(finalTarget.id)
+    }, 3100)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(flickerInterval)
+      window.clearTimeout(t1)
+      window.clearTimeout(t2)
+      window.clearTimeout(tResolve)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingBossTurn?.turn])
 
   const spawnDamagePetal = (targetId: string, value: number) => {
     if (value <= 0) return
@@ -302,8 +352,9 @@ export function BattleArena({
     if (bossAfter.currentHealth <= 0) {
       setTurn((t) => t + 1)
       setSaving(true)
+      const hpBonus = fightersAfterPlayer.reduce((sum, f) => sum + Math.max(0, f.currentHealth), 0)
       try {
-        await onSaveBattle("player", boss.id, nextLog)
+        await onSaveBattle("player", boss.id, nextLog, hpBonus)
         onBattleResolved?.()
       } finally {
         setSaving(false)
@@ -357,13 +408,15 @@ export function BattleArena({
     if (updatedFighters.every((f) => f.currentHealth <= 0)) {
       setSaving(true)
       try {
-        await onSaveBattle("boss", boss.id, finalLog)
+        await onSaveBattle("boss", boss.id, finalLog, 0)
         onBattleResolved?.()
       } finally {
         setSaving(false)
       }
     }
   }
+  // keep ref up-to-date so countdown closure always calls the latest version
+  useEffect(() => { resolveBossTurnRef.current = resolveBossTurn })
 
   const autoResolveBossTurn = async () => {
     const aliveTargets = fighters.filter((f) => f.currentHealth > 0)
@@ -384,12 +437,7 @@ export function BattleArena({
   }
 
   const handleBossTap = () => {
-    if (battleOver) return
-
-    if (pendingBossTurn) {
-      setDraggedId("boss")
-      return
-    }
+    if (battleOver || pendingBossTurn) return
 
     if (tapSelectedAllyId) {
       void attackWith(tapSelectedAllyId)
@@ -397,12 +445,7 @@ export function BattleArena({
   }
 
   const handleAllyTap = (fighter: FighterCard) => {
-    if (battleOver || fighter.currentHealth <= 0) return
-
-    if (pendingBossTurn) {
-      void resolveBossTurn(fighter.id)
-      return
-    }
+    if (battleOver || fighter.currentHealth <= 0 || pendingBossTurn) return
 
     setTapSelectedAllyId(fighter.id)
     setDraggedId(fighter.id)
@@ -410,6 +453,7 @@ export function BattleArena({
 
   const handleTurnButtonClick = () => {
     if (canExecuteBossTurn) {
+      // skip countdown — pick random target immediately
       void autoResolveBossTurn()
       return
     }
@@ -496,7 +540,7 @@ export function BattleArena({
           </div>
         </div>
         <p className="mb-3 text-xs text-muted-foreground">
-          {pendingBossTurn ? t.dragOrTapBoss : t.dragOrTapPlayer}
+          {pendingBossTurn ? t.bossTurnCountdown : t.dragOrTapPlayer}
         </p>
 
         <div ref={arenaRef} className="relative flex flex-col items-center gap-3">
@@ -536,14 +580,21 @@ export function BattleArena({
             {flashTargetId === "boss" && (
               <div className="battle-impact-flash pointer-events-none absolute inset-0 z-40 rounded-xl bg-white/60" />
             )}
+            {bossCountdownTick !== null && (
+              <div className="pointer-events-none absolute -bottom-8 left-1/2 z-50 -translate-x-1/2">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-rose-400/80 bg-rose-900/80 text-xl font-bold text-rose-100 shadow-lg">
+                  {bossCountdownTick}
+                </span>
+              </div>
+            )}
             <BattleFighterCard
               fighter={boss}
               role="boss"
               isDead={boss.currentHealth <= 0}
-              draggable={!!pendingBossTurn && !battleOver}
+              draggable={false}
               droppable={!pendingBossTurn && !battleOver}
               highlighted={draggedId !== null && !pendingBossTurn && !battleOver}
-              onDragStart={() => setDraggedId("boss")}
+              onDragStart={() => {}}
               onTap={handleBossTap}
               onDrop={() => {
                 if (draggedId && draggedId !== "boss") {
@@ -566,7 +617,7 @@ export function BattleArena({
               disabled={!canExecuteBossTurn && !canExecuteCatTurn}
               onClick={handleTurnButtonClick}
             >
-              {pendingBossTurn ? t.bossTurnCta : t.catsTurnCta}
+              {bossCountdownTick !== null ? `${t.bossTurnCta} → ${bossCountdownTick}` : (pendingBossTurn ? t.bossTurnCta : t.catsTurnCta)}
             </Button>
             <div className={`h-[2px] flex-1 ${bossTurnActive ? "bg-gradient-to-l from-transparent via-rose-300/80 to-rose-300/55" : "bg-gradient-to-l from-transparent via-sky-300/75 to-sky-300/50"}`} />
             <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full border ${bossTurnActive ? "border-border/50 bg-background/40 text-muted-foreground" : "border-sky-300/55 bg-sky-400/20 text-sky-100"}`}>
@@ -596,19 +647,19 @@ export function BattleArena({
                 {flashTargetId === fighter.id && (
                   <div className="battle-impact-flash pointer-events-none absolute inset-0 z-40 rounded-xl bg-white/55" />
                 )}
+                {bossTargetPreviewId === fighter.id && (
+                  <div className="pointer-events-none absolute inset-0 z-30 rounded-xl ring-2 ring-rose-400/85 ring-offset-1 ring-offset-transparent" />
+                )}
                 <BattleFighterCard
                   fighter={fighter}
                   role="ally"
                   isDead={fighter.currentHealth <= 0}
                   draggable={!pendingBossTurn && !battleOver && fighter.currentHealth > 0}
-                  droppable={!!pendingBossTurn && !battleOver}
-                  highlighted={(draggedId === "boss" && !!pendingBossTurn) || tapSelectedAllyId === fighter.id}
+                  droppable={false}
+                  highlighted={tapSelectedAllyId === fighter.id}
                   onDragStart={() => setDraggedId(fighter.id)}
                   onTap={() => handleAllyTap(fighter)}
                   onDrop={() => {
-                    if (pendingBossTurn && draggedId === "boss") {
-                      void resolveBossTurn(fighter.id)
-                    }
                     setDraggedId(null)
                   }}
                 />
