@@ -5,12 +5,79 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { LanguageToggle } from "@/components/mew/language-toggle"
 import { useMewI18n } from "@/lib/mew-i18n"
-import { BOSS_FIGHTERS } from "@/lib/mew-bosses"
-import type { FighterCard } from "@/lib/mew-types"
 
 interface PreAuthUkiyoeSplashProps {
   onEnter: () => void
 }
+
+interface SplashCard {
+  id: string
+  name: string
+  attack: number
+  health: number
+  rarity: "common" | "rare" | "epic" | "legendary"
+  imageUrl: string
+  rot: number  // rotation degrees
+  tx: number   // translateX
+  ty: number   // translateY (positive = down)
+}
+
+const SPLASH_CAT_CARDS: SplashCard[] = [
+  { id: "cat_knight",    name: "Cat Knight",    attack: 14, health: 52, rarity: "common",    imageUrl: "/cards/cat_knight.svg",    rot: -18, tx: -248, ty: 14 },
+  { id: "cat_ninja",     name: "Cat Ninja",     attack: 16, health: 40, rarity: "rare",      imageUrl: "/cards/cat_ninja.svg",     rot: -10, tx: -126, ty:  6 },
+  { id: "cat_mage",      name: "Cat Mage",      attack: 18, health: 38, rarity: "epic",      imageUrl: "/cards/cat_mage.svg",      rot:   0, tx:    0, ty:  0 },
+  { id: "cat_berserker", name: "Cat Berserker", attack: 20, health: 42, rarity: "rare",      imageUrl: "/cards/cat_berserker.svg", rot:  10, tx:  126, ty:  6 },
+  { id: "cat_dragon",    name: "Cat Dragon",    attack: 24, health: 58, rarity: "legendary", imageUrl: "/cards/cat_dragon.svg",    rot:  18, tx:  248, ty: 14 },
+]
+
+const RARITY_BORDER: Record<SplashCard["rarity"], string> = {
+  common:    "border-zinc-500/70",
+  rare:      "border-sky-500/65",
+  epic:      "border-fuchsia-500/65",
+  legendary: "border-amber-400/80",
+}
+const RARITY_GLOW: Record<SplashCard["rarity"], string> = {
+  common:    "",
+  rare:      "shadow-[0_0_14px_rgba(56,189,248,0.28)]",
+  epic:      "shadow-[0_0_16px_rgba(217,70,239,0.3)]",
+  legendary: "shadow-[0_0_20px_rgba(251,191,36,0.42)]",
+}
+const RARITY_BADGE: Record<SplashCard["rarity"], string> = {
+  common:    "bg-zinc-700/80 text-zinc-100",
+  rare:      "bg-sky-500/25 text-sky-100",
+  epic:      "bg-fuchsia-500/25 text-fuchsia-100",
+  legendary: "bg-amber-500/30 text-amber-50",
+}
+
+function SplashMiniCard({ card }: { card: SplashCard }) {
+  const [imgSrc, setImgSrc] = useState(card.imageUrl)
+  return (
+    <div className={`relative w-[118px] overflow-hidden rounded-xl border-[1.5px] bg-[#10091e] shadow-2xl shadow-black/60 ${RARITY_BORDER[card.rarity]} ${RARITY_GLOW[card.rarity]}`}>
+      <div className="relative">
+        <Image
+          src={imgSrc}
+          alt={card.name}
+          width={236}
+          height={133}
+          className="h-[66px] w-full object-cover"
+          onError={() => setImgSrc("/cards/cat_knight.svg")}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+        <span className={`absolute right-1.5 top-1.5 rounded-full px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.12em] ${RARITY_BADGE[card.rarity]}`}>
+          {card.rarity}
+        </span>
+      </div>
+      <div className="p-1.5">
+        <p className="truncate text-[10px] font-semibold leading-tight text-slate-100">{card.name}</p>
+        <div className="mt-1 flex items-center gap-1 text-[9px] font-medium">
+          <span className="rounded bg-rose-500/20 px-1 py-0.5 text-rose-200">ATK {card.attack}</span>
+          <span className="rounded bg-emerald-500/20 px-1 py-0.5 text-emerald-200">HP {card.health}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 
 const PETALS = Array.from({ length: 22 }, (_, i) => ({
   id: i,
@@ -28,11 +95,6 @@ const BLOSSOM_POSITIONS: [number, number][] = [
 
 export function PreAuthUkiyoeSplash({ onEnter }: PreAuthUkiyoeSplashProps) {
   const { t } = useMewI18n()
-  const [boss, setBoss] = useState<FighterCard>(BOSS_FIGHTERS[0])
-
-  useEffect(() => {
-    setBoss(BOSS_FIGHTERS[Math.floor(Math.random() * BOSS_FIGHTERS.length)])
-  }, [])
 
   return (
     <div className="absolute inset-0 overflow-hidden">
@@ -151,45 +213,23 @@ export function PreAuthUkiyoeSplash({ onEnter }: PreAuthUkiyoeSplashProps) {
         </svg>
       ))}
 
-      {/* Cards row: 3 cats + random boss */}
-      <div className="absolute inset-0 flex items-end justify-center pb-12">
-        <div className="flex w-full max-w-3xl flex-col items-center gap-4 px-3 sm:px-4">
-          <div className="relative">
-            <span className="absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-rose-400/55 bg-rose-900/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-200">
-              BOSS
-            </span>
-            <Image
-              src={boss.imageUrl ?? "/bosses/evil_raven.svg"}
-              alt={boss.name}
-              width={144}
-              height={144}
-              className="rounded-2xl border border-rose-500/50 bg-black/35 p-1 shadow-2xl shadow-rose-900/55"
-            />
-          </div>
-
-          <div className="grid w-full max-w-xl grid-cols-3 items-end gap-3">
-            <Image
-              src="/cards/cat_ninja.svg"
-              alt="Cat Ninja"
-              width={126}
-              height={126}
-              className="justify-self-end rounded-2xl border border-white/15 bg-black/20 p-1 shadow-2xl shadow-black/40"
-            />
-            <Image
-              src="/cards/cat_dragon.svg"
-              alt="Cat Dragon"
-              width={136}
-              height={136}
-              className="-mb-2 justify-self-center rounded-2xl border border-amber-300/25 bg-black/25 p-1 shadow-2xl shadow-amber-900/35"
-            />
-            <Image
-              src="/cards/cat_mage.svg"
-              alt="Cat Mage"
-              width={126}
-              height={126}
-              className="justify-self-start rounded-2xl border border-white/15 bg-black/20 p-1 shadow-2xl shadow-black/40"
-            />
-          </div>
+      {/* Cards spread: mini real cards laid on the table */}
+      <div className="absolute inset-x-0 bottom-[82px] flex justify-center">
+        <div className="relative flex items-end justify-center" style={{ height: 210 }}>
+          {SPLASH_CAT_CARDS.map((card, i) => {
+            const rot = card.rot
+            const tx = card.tx
+            const ty = card.ty
+            return (
+              <div
+                key={card.id}
+                className="absolute origin-bottom"
+                style={{ transform: `translateX(${tx}px) translateY(${ty}px) rotate(${rot}deg)`, zIndex: i + 1 }}
+              >
+                <SplashMiniCard card={card} />
+              </div>
+            )
+          })}
         </div>
       </div>
 
