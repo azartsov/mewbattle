@@ -10,6 +10,7 @@ import { useMewI18n } from "@/lib/mew-i18n"
 import { BOSS_TYPE_ICON, BOSS_TYPE_THEME } from "@/lib/mew-bosses"
 import { CARD_META_RU } from "@/lib/mew-card-meta"
 import { getCardSellPrice } from "@/lib/mew-firestore"
+import { CoinPawBadge } from "@/components/mew/coin-paw-badge"
 
 interface MewCardFaceProps {
   card: MewCard
@@ -149,9 +150,7 @@ export function MewCardFace({ card, owned, compact = false, className }: MewCard
                     </>
                   )}
 
-                  <span className="inline-flex items-center gap-1 rounded border border-amber-400/35 bg-amber-500/15 px-2 py-0.5 font-medium text-amber-200">
-                    🪙 {sellPrice}
-                  </span>
+                  <CoinPawBadge amount={sellPrice} compact />
                   <span className="text-foreground/85">{t.paramSellPriceDesc}</span>
                 </div>
               </div>
