@@ -114,6 +114,7 @@ type MewTranslations = {
   helpBattle: string
   helpCardLegendTitle: string
   helpCardLegendIntro: string
+  helpCardLegendAbilities: string
   helpStatAtk: string
   helpStatHp: string
   helpStatOwned: string
@@ -269,6 +270,7 @@ const translations: Record<MewLanguage, MewTranslations> = {
     helpBattle: "Battle: on desktop drag cards, on mobile tap attacker then target.",
     helpCardLegendTitle: "Card Legend",
     helpCardLegendIntro: "Each card has combat stats and rarity tags that affect gameplay and economy.",
+    helpCardLegendAbilities: "Also, every card has an Ability — a special trait that can trigger during battle.",
     helpStatAtk: "ATK: attack power. Higher ATK means more damage per hit.",
     helpStatHp: "HP: health points. When HP reaches 0, the fighter is defeated.",
     helpStatOwned: "x1, x2, ...: how many copies of this card you own.",
@@ -422,6 +424,7 @@ const translations: Record<MewLanguage, MewTranslations> = {
     helpBattle: "Бой: на десктопе работает drag-and-drop, на мобильных устройствах — выбор через нажатия.",
     helpCardLegendTitle: "Расшифровка карточки",
     helpCardLegendIntro: "У каждой карты есть боевые параметры и редкость, которые влияют на бой и экономику.",
+    helpCardLegendAbilities: "Кроме параметров и редкости, у каждой карты есть умение — особенность, которая может сработать в бою.",
     helpStatAtk: "ATK: сила атаки. Чем выше значение, тем больше урон за удар.",
     helpStatHp: "HP: очки здоровья. При 0 HP боец выбывает.",
     helpStatOwned: "x1, x2, ...: количество копий карты в вашей коллекции.",

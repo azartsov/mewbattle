@@ -8,7 +8,7 @@ import type { MewCard } from "@/lib/mew-types"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { useMewI18n } from "@/lib/mew-i18n"
 import { BOSS_TYPE_ICON, BOSS_TYPE_THEME } from "@/lib/mew-bosses"
-import { CARD_META_RU } from "@/lib/mew-card-meta"
+import { CARD_META_RU, CARD_META_JA } from "@/lib/mew-card-meta"
 import { getCardSellPrice } from "@/lib/mew-firestore"
 import { CoinPawBadge } from "@/components/mew/coin-paw-badge"
 
@@ -106,7 +106,12 @@ export function MewCardFace({ card, owned, compact = false, className }: MewCard
           </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>{displayName}</DialogTitle>
+              <div>
+                {CARD_META_JA[card.id] && (
+                  <p className="text-xs font-light tracking-[0.18em] text-muted-foreground/60 leading-none mb-1">{CARD_META_JA[card.id]}</p>
+                )}
+                <DialogTitle>{displayName}</DialogTitle>
+              </div>
             </DialogHeader>
             <div className="space-y-3 text-sm">
               <div>
@@ -116,21 +121,21 @@ export function MewCardFace({ card, owned, compact = false, className }: MewCard
               <div>
                 <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">{t.paramList}</p>
                 <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2.5 items-center text-xs">
-                  <span className="rounded-md bg-rose-500/15 px-2 py-1 font-medium text-rose-200">ATK {card.attack}</span>
+                  <div className="w-fit"><span className="rounded-md bg-rose-500/15 px-2 py-1 font-medium text-rose-200">ATK {card.attack}</span></div>
                   <span className="text-foreground/85">{t.paramAttackDesc}</span>
 
-                  <span className="rounded-md bg-emerald-500/15 px-2 py-1 font-medium text-emerald-200">HP {card.health}</span>
+                  <div className="w-fit"><span className="rounded-md bg-emerald-500/15 px-2 py-1 font-medium text-emerald-200">HP {card.health}</span></div>
                   <span className="text-foreground/85">{t.paramHealthDesc}</span>
 
-                  <span className={cn("inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]", theme.badge)}>{card.rarity}</span>
+                  <div className="w-fit"><span className={cn("inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]", theme.badge)}>{card.rarity}</span></div>
                   <span className="text-foreground/85">{t.paramRarityDesc}</span>
 
-                  <span className="rounded border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 text-sky-200">{displayAbility}</span>
+                  <div className="w-fit"><span className="rounded border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 text-sky-200">{displayAbility}</span></div>
                   <span className="text-foreground/85">{t.paramAbilityDesc}</span>
 
                   {affinities.length > 0 ? (
                     <>
-                      <div className="flex flex-wrap gap-1">
+                      <div className="w-fit flex flex-wrap gap-1">
                         {affinities.map((affinity) => (
                           <span
                             key={`dlg-${card.id}-${affinity.bossType}`}
@@ -145,12 +150,12 @@ export function MewCardFace({ card, owned, compact = false, className }: MewCard
                     </>
                   ) : (
                     <>
-                      <span className="text-muted-foreground">{t.noAffinity}</span>
+                      <div className="w-fit"><span className="text-muted-foreground">{t.noAffinity}</span></div>
                       <span className="text-foreground/85">{t.paramAffinityDesc}</span>
                     </>
                   )}
 
-                  <CoinPawBadge amount={sellPrice} compact />
+                  <div className="w-fit"><CoinPawBadge amount={sellPrice} compact /></div>
                   <span className="text-foreground/85">{t.paramSellPriceDesc}</span>
                 </div>
               </div>
@@ -161,7 +166,12 @@ export function MewCardFace({ card, owned, compact = false, className }: MewCard
 
       <div className={cn("space-y-2 p-3", compact && "space-y-1.5 p-2.5")}>
         <div className="flex items-start justify-between gap-2">
-          <h4 className={cn("font-semibold leading-tight", compact ? "text-sm" : "text-base")}>{displayName}</h4>
+          <div>
+            {CARD_META_JA[card.id] && (
+              <p className="text-[9px] font-light tracking-[0.18em] text-muted-foreground/55 leading-none mb-0.5">{CARD_META_JA[card.id]}</p>
+            )}
+            <h4 className={cn("font-semibold leading-tight", compact ? "text-sm" : "text-base")}>{displayName}</h4>
+          </div>
           {typeof owned === "number" && (
             <span className="rounded-md border border-border bg-secondary/60 px-1.5 py-0.5 text-[11px] font-medium text-secondary-foreground">
               x{owned}

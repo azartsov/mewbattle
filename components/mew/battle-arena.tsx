@@ -101,6 +101,7 @@ export function BattleArena({
   const [flashTargetId, setFlashTargetId] = useState<string | null>(null)
   const [lightningFx, setLightningFx] = useState<ActiveLightningFx | null>(null)
   const [damagePetals, setDamagePetals] = useState<DamagePetalFx[]>([])
+  const [abilityFx, setAbilityFx] = useState<{ targetId: string; fxType: "fire" | "ice"; label: string } | null>(null)
 
   const arenaRef = useRef<HTMLDivElement | null>(null)
   const bossCardRef = useRef<HTMLDivElement | null>(null)
@@ -109,6 +110,7 @@ export function BattleArena({
   const shakeTimeoutRef = useRef<number | null>(null)
   const flashTimeoutRef = useRef<number | null>(null)
   const damagePetalTimeoutsRef = useRef<number[]>([])
+  const abilityFxTimeoutRef = useRef<number | null>(null)
   const fightersRef = useRef(fighters)
   // keep refs in sync so countdown closures always see the latest values
   useEffect(() => { fightersRef.current = fighters })
@@ -116,6 +118,12 @@ export function BattleArena({
   const clearDamagePetalTimeouts = () => {
     damagePetalTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId))
     damagePetalTimeoutsRef.current = []
+  }
+
+  const triggerAbilityFx = (targetId: string, fxType: "fire" | "ice", label: string) => {
+    if (abilityFxTimeoutRef.current) window.clearTimeout(abilityFxTimeoutRef.current)
+    setAbilityFx({ targetId, fxType, label })
+    abilityFxTimeoutRef.current = window.setTimeout(() => setAbilityFx(null), 1400)
   }
 
   const aliveFighters = useMemo(() => fighters.filter((f) => f.currentHealth > 0), [fighters])
@@ -137,6 +145,7 @@ export function BattleArena({
     setFlashTargetId(null)
     setLightningFx(null)
     setDamagePetals([])
+    setAbilityFx(null)
     setBossCountdownTick(null)
     setBossTargetPreviewId(null)
   }, [createBoss, deckCards])
@@ -146,6 +155,7 @@ export function BattleArena({
       if (fxTimeoutRef.current) window.clearTimeout(fxTimeoutRef.current)
       if (shakeTimeoutRef.current) window.clearTimeout(shakeTimeoutRef.current)
       if (flashTimeoutRef.current) window.clearTimeout(flashTimeoutRef.current)
+      if (abilityFxTimeoutRef.current) window.clearTimeout(abilityFxTimeoutRef.current)
       clearDamagePetalTimeouts()
     }
   }, [])
@@ -168,15 +178,10 @@ export function BattleArena({
     setBossCountdownTick(3)
     setBossTargetPreviewId(pickRandom())
 
-    const flickerInterval = window.setInterval(() => {
-      if (!cancelled) setBossTargetPreviewId(pickRandom())
-    }, 280)
-
     const t1 = window.setTimeout(() => { if (!cancelled) setBossCountdownTick(2) }, 1000)
     const t2 = window.setTimeout(() => { if (!cancelled) setBossCountdownTick(1) }, 2000)
     const tResolve = window.setTimeout(() => {
       if (cancelled) return
-      window.clearInterval(flickerInterval)
       const finalTarget = alive[Math.floor(Math.random() * alive.length)]
       setBossCountdownTick(null)
       setBossTargetPreviewId(null)
@@ -185,7 +190,6 @@ export function BattleArena({
 
     return () => {
       cancelled = true
-      window.clearInterval(flickerInterval)
       window.clearTimeout(t1)
       window.clearTimeout(t2)
       window.clearTimeout(tResolve)
@@ -342,6 +346,9 @@ export function BattleArena({
       vibrateHit(20)
       spawnDamagePetal("boss", playerTurn.damage)
     }
+    if (playerTurn.doubled) triggerAbilityFx(attacker.id, "fire", "× 2!")
+    else if (playerTurn.dodged) triggerAbilityFx("boss", "ice", "DODGE!")
+    else if (playerTurn.shielded) triggerAbilityFx("boss", "ice", "SHIELD!")
 
     setFighters(fightersAfterPlayer)
     setBoss(bossAfter)
@@ -397,6 +404,9 @@ export function BattleArena({
       vibrateHit([16, 24, 16])
       spawnDamagePetal(target.id, bossTurn.damage)
     }
+    if (bossTurn.doubled) triggerAbilityFx("boss", "fire", "× 2!")
+    else if (bossTurn.dodged) triggerAbilityFx(target.id, "ice", "DODGE!")
+    else if (bossTurn.shielded) triggerAbilityFx(target.id, "ice", "SHIELD!")
 
     setFighters(updatedFighters)
     setLog(finalLog)
@@ -434,6 +444,7 @@ export function BattleArena({
     setDraggedId(null)
     setTapSelectedAllyId(null)
     setDamagePetals([])
+    setAbilityFx(null)
   }
 
   const handleBossTap = () => {
@@ -529,6 +540,23 @@ export function BattleArena({
           .turn-cta-pulse-sky {
             animation: turn-cta-pulse-sky 1.05s ease-in-out infinite;
           }
+          @keyframes ability-fire-border {
+            0%, 100% { box-shadow: 0 0 0 2px rgba(251, 146, 60, 0.75), 0 0 14px rgba(239, 68, 68, 0.5); }
+            50% { box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.95), 0 0 22px rgba(251, 146, 60, 0.65); }
+          }
+          @keyframes ability-ice-border {
+            0%, 100% { box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.75), 0 0 14px rgba(14, 165, 233, 0.45); }
+            50% { box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.95), 0 0 22px rgba(56, 189, 248, 0.6); }
+          }
+          @keyframes ability-label-float {
+            0% { opacity: 0; transform: translate(-50%, 0px) scale(0.8); }
+            20% { opacity: 1; transform: translate(-50%, -8px) scale(1); }
+            85% { opacity: 1; transform: translate(-50%, -22px) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -28px) scale(0.95); }
+          }
+          .ability-fire { animation: ability-fire-border 0.38s ease-in-out 3; border-radius: 12px; }
+          .ability-ice { animation: ability-ice-border 0.38s ease-in-out 3; border-radius: 12px; }
+          .ability-label-float { animation: ability-label-float 1.3s ease-out forwards; }
         `}</style>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -579,6 +607,14 @@ export function BattleArena({
               ))}
             {flashTargetId === "boss" && (
               <div className="battle-impact-flash pointer-events-none absolute inset-0 z-40 rounded-xl bg-white/60" />
+            )}
+            {abilityFx?.targetId === "boss" && (
+              <>
+                <div className={`pointer-events-none absolute inset-0 z-[35] rounded-xl ${abilityFx.fxType === "fire" ? "ability-fire" : "ability-ice"}`} />
+                <span className={`ability-label-float pointer-events-none absolute left-1/2 bottom-2 z-50 inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold backdrop-blur ${abilityFx.fxType === "fire" ? "border-orange-400/65 bg-orange-900/75 text-orange-100" : "border-cyan-400/65 bg-cyan-900/75 text-cyan-100"}`}>
+                  {abilityFx.label}
+                </span>
+              </>
             )}
             {bossCountdownTick !== null && (
               <div className="pointer-events-none absolute -bottom-8 left-1/2 z-50 -translate-x-1/2">
@@ -646,6 +682,14 @@ export function BattleArena({
                   ))}
                 {flashTargetId === fighter.id && (
                   <div className="battle-impact-flash pointer-events-none absolute inset-0 z-40 rounded-xl bg-white/55" />
+                )}
+                {abilityFx?.targetId === fighter.id && (
+                  <>
+                    <div className={`pointer-events-none absolute inset-0 z-[35] rounded-xl ${abilityFx.fxType === "fire" ? "ability-fire" : "ability-ice"}`} />
+                    <span className={`ability-label-float pointer-events-none absolute left-1/2 bottom-2 z-50 inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold backdrop-blur ${abilityFx.fxType === "fire" ? "border-orange-400/65 bg-orange-900/75 text-orange-100" : "border-cyan-400/65 bg-cyan-900/75 text-cyan-100"}`}>
+                      {abilityFx.label}
+                    </span>
+                  </>
                 )}
                 {bossTargetPreviewId === fighter.id && (
                   <div className="pointer-events-none absolute inset-0 z-30 rounded-xl ring-2 ring-rose-400/85 ring-offset-1 ring-offset-transparent" />

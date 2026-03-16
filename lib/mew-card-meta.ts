@@ -62,3 +62,18 @@ export const CARD_META_RU: Record<string, CardMetaLocalized> = {
     ability: "Быстрое уклонение и чиповый отравляющий урон",
   },
 }
+
+/** Japanese kanji names shown above the card display name. */
+export const CARD_META_JA: Record<string, string> = {
+  cat_knight: "騎士猫",
+  cat_alchemist: "錬金猫",
+  cat_phantom: "幻影猫",
+  cat_ninja: "忍者猫",
+  cat_mage: "魔法猫",
+  cat_berserker: "狂戦猫",
+  cat_vampire: "吸血猫",
+  cat_dragon: "龍猫",
+  boss_raven: "邪鴉",
+  boss_dog: "猛犬",
+  boss_rat: "疫鼠",
+}

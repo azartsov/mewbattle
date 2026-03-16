@@ -8,7 +8,7 @@ import type { FighterCard } from "@/lib/mew-types"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { useMewI18n } from "@/lib/mew-i18n"
 import { BOSS_TYPE_ICON, BOSS_TYPE_THEME } from "@/lib/mew-bosses"
-import { CARD_META_RU } from "@/lib/mew-card-meta"
+import { CARD_META_RU, CARD_META_JA } from "@/lib/mew-card-meta"
 
 interface BattleFighterCardProps {
   fighter: FighterCard
@@ -118,7 +118,12 @@ export function BattleFighterCard({
           </DialogTrigger>
           <DialogContent className="max-w-lg" onClick={(event) => event.stopPropagation()}>
             <DialogHeader>
-              <DialogTitle>{displayName}</DialogTitle>
+              <div>
+                {CARD_META_JA[baseId] && (
+                  <p className="text-xs font-light tracking-[0.18em] text-muted-foreground/60 leading-none mb-1">{CARD_META_JA[baseId]}</p>
+                )}
+                <DialogTitle>{displayName}</DialogTitle>
+              </div>
             </DialogHeader>
             <div className="space-y-3 text-sm">
               <div>
@@ -128,25 +133,25 @@ export function BattleFighterCard({
               <div>
                 <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">{t.paramList}</p>
                 <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2.5 items-center text-xs">
-                  <span className="rounded-md bg-rose-500/15 px-2 py-1 font-medium text-rose-200">ATK {fighter.attack}</span>
+                  <div className="w-fit"><span className="rounded-md bg-rose-500/15 px-2 py-1 font-medium text-rose-200">ATK {fighter.attack}</span></div>
                   <span className="text-foreground/85">{t.paramAttackDesc}</span>
 
-                  <span className="rounded-md bg-emerald-500/15 px-2 py-1 font-medium text-emerald-200">HP {fighter.currentHealth}/{fighter.health}</span>
+                  <div className="w-fit"><span className="rounded-md bg-emerald-500/15 px-2 py-1 font-medium text-emerald-200">HP {fighter.currentHealth}/{fighter.health}</span></div>
                   <span className="text-foreground/85">{t.paramHealthDesc}</span>
 
-                  <span className="rounded border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 text-sky-200">{displayAbility}</span>
+                  <div className="w-fit"><span className="rounded border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 text-sky-200">{displayAbility}</span></div>
                   <span className="text-foreground/85">{t.paramAbilityDesc}</span>
 
                   {fighter.bossType && (
                     <>
-                      <span className="rounded bg-rose-500/15 border border-rose-400/30 px-2 py-0.5 font-medium text-rose-200">{bossTypeLabel(fighter.bossType)}</span>
+                      <div className="w-fit"><span className="rounded bg-rose-500/15 border border-rose-400/30 px-2 py-0.5 font-medium text-rose-200">{bossTypeLabel(fighter.bossType)}</span></div>
                       <span className="text-foreground/85">{t.bossType}</span>
                     </>
                   )}
 
                   {fighter.bossAffinities && fighter.bossAffinities.length > 0 && (
                     <>
-                      <div className="flex flex-wrap gap-1">
+                      <div className="w-fit flex flex-wrap gap-1">
                         {fighter.bossAffinities.map((affinity) => (
                           <span
                             key={`${fighter.id}-${affinity.bossType}`}
@@ -168,6 +173,9 @@ export function BattleFighterCard({
       </div>
 
       <div className="space-y-1.5 p-2">
+        {CARD_META_JA[baseId] && (
+          <p className="text-[8px] font-light tracking-[0.15em] text-muted-foreground/50 leading-none mb-0.5">{CARD_META_JA[baseId]}</p>
+        )}
         <div className="truncate text-xs font-semibold">{displayName}</div>
 
         <div className="flex items-center gap-1.5 text-[10px] font-medium">
