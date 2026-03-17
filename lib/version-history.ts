@@ -9,6 +9,22 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: VersionHistoryEntry[] = [
   {
+    version: "0.215",
+    date: "2026-03-18",
+    summary: {
+      ru: "Установленная PWA-версия теперь на старте проверяет свежую сборку и предлагает установить обновление, если в сети появилась более новая версия.",
+      en: "The installed PWA now checks for a newer build on startup and offers to install the update when a fresher version is available online.",
+    },
+  },
+  {
+    version: "0.214",
+    date: "2026-03-18",
+    summary: {
+      ru: "В игровом меню появилась кнопка установки PWA-приложения: при поддержке браузера открывается системная установка, а в остальных случаях показываются подсказки по установке и переустановке.",
+      en: "The in-game menu now includes a PWA install button: supported browsers open the system install prompt, and other cases show install or reinstall guidance.",
+    },
+  },
+  {
     version: "0.213",
     date: "2026-03-18",
     summary: {

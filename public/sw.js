@@ -1,4 +1,5 @@
-const CACHE_NAME = "dartmaster-v1";
+const APP_VERSION = "0.215";
+const CACHE_NAME = `mewbattle-v${APP_VERSION}`;
 
 // Pre-cache the shell on install
 self.addEventListener("install", (event) => {
@@ -8,6 +9,12 @@ self.addEventListener("install", (event) => {
     })
   );
   self.skipWaiting();
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 // Clean up old caches on activate
@@ -26,6 +33,12 @@ self.addEventListener("fetch", (event) => {
 
   // Skip non-GET and chrome-extension requests
   if (request.method !== "GET" || request.url.startsWith("chrome-extension")) return;
+
+  // Version manifest must always come from the network so the app can detect updates.
+  if (request.url.includes("/version.json")) {
+    event.respondWith(fetch(request));
+    return;
+  }
 
   // Navigation requests: network-first with cache fallback
   if (request.mode === "navigate") {

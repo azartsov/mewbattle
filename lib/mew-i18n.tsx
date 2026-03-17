@@ -173,6 +173,22 @@ type MewTranslations = {
   cardDesign: string
   cardDesignClassic: string
   cardDesignStorybook: string
+  installGame: string
+  reinstallGame: string
+  pwaInstallTitle: string
+  pwaInstallReady: string
+  pwaInstallDismissed: string
+  pwaAlreadyInstalled: string
+  pwaReinstallHint: string
+  pwaIosInstallHint: string
+  pwaGenericInstallHint: string
+  pwaUpdateTitle: string
+  pwaUpdateBody: string
+  pwaCurrentVersion: string
+  pwaLatestVersion: string
+  pwaInstallUpdate: string
+  pwaUpdateLater: string
+  close: string
   victoryMessage: string
   defeatMessage: string
   coinsWon: string
@@ -349,6 +365,22 @@ const translations: Record<MewLanguage, MewTranslations> = {
     cardDesign: "Card design",
     cardDesignClassic: "Classic",
     cardDesignStorybook: "Soft anime",
+    installGame: "Install game",
+    reinstallGame: "Reinstall game",
+    pwaInstallTitle: "Install app",
+    pwaInstallReady: "The browser is ready to install MewBattle as an app.",
+    pwaInstallDismissed: "The installation prompt was closed. You can open it again from the menu when the browser allows it.",
+    pwaAlreadyInstalled: "MewBattle is already installed on this device.",
+    pwaReinstallHint: "To reinstall it, remove the current app from your device, then open MewBattle in the browser and run installation again.",
+    pwaIosInstallHint: "On iPhone or iPad, open the Share menu in Safari and choose Add to Home Screen.",
+    pwaGenericInstallHint: "If the browser does not show a system install window, use its menu and choose Install app or Create shortcut.",
+    pwaUpdateTitle: "Update available",
+    pwaUpdateBody: "A newer version of MewBattle is available for the installed app. Reload to apply it.",
+    pwaCurrentVersion: "Current version",
+    pwaLatestVersion: "Latest version",
+    pwaInstallUpdate: "Install update",
+    pwaUpdateLater: "Later",
+    close: "Close",
     victoryMessage: "The cats chased the boss away and brought home a bright reward.",
     defeatMessage: "The boss won this duel, but the cats will return stronger.",
     coinsWon: "Coins won",
@@ -523,6 +555,22 @@ const translations: Record<MewLanguage, MewTranslations> = {
     cardDesign: "Дизайн карточек",
     cardDesignClassic: "Классический",
     cardDesignStorybook: "Мягкий аниме",
+    installGame: "Установить игру",
+    reinstallGame: "Переустановить игру",
+    pwaInstallTitle: "Установка приложения",
+    pwaInstallReady: "Браузер готов установить MewBattle как приложение.",
+    pwaInstallDismissed: "Окно установки было закрыто. Можно открыть его снова из меню, когда браузер это позволит.",
+    pwaAlreadyInstalled: "MewBattle уже установлен на этом устройстве.",
+    pwaReinstallHint: "Чтобы переустановить игру, удалите текущее приложение с устройства, затем откройте MewBattle в браузере и запустите установку снова.",
+    pwaIosInstallHint: "На iPhone или iPad откройте меню Поделиться в Safari и выберите На экран Домой.",
+    pwaGenericInstallHint: "Если браузер не показывает системное окно установки, откройте его меню и выберите Установить приложение или Создать ярлык.",
+    pwaUpdateTitle: "Доступно обновление",
+    pwaUpdateBody: "Для установленной версии MewBattle доступна более свежая сборка. Перезагрузите приложение, чтобы применить её.",
+    pwaCurrentVersion: "Текущая версия",
+    pwaLatestVersion: "Новая версия",
+    pwaInstallUpdate: "Установить обновление",
+    pwaUpdateLater: "Позже",
+    close: "Закрыть",
     victoryMessage: "Коты прогнали босса и вернулись с заслуженной наградой.",
     defeatMessage: "В этот раз босс оказался сильнее, но коты еще вернутся.",
     coinsWon: "Выиграно монет",

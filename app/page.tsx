@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Image from "next/image"
-import { BookOpen, CircleHelp, Crown, Gem, Gift, LogOut, MoreVertical, PawPrint, Play, RotateCcw, Shield, Sparkles, Swords, TrendingUp, Trophy, X } from "lucide-react"
+import { BookOpen, CircleHelp, Crown, Download, Gem, Gift, LogOut, MoreVertical, PawPrint, Play, RotateCcw, Shield, Sparkles, Swords, TrendingUp, Trophy, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -56,6 +56,28 @@ import { DEFAULT_CARD_DESIGN, loadLocalCardDesign, loadUserCardDesign, normalize
 
 type TabKey = "collection" | "deck" | "boosters" | "battle" | "help"
 type BattleStage = "idle" | "preparing" | "fighting" | "completed"
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>
+}
+
+interface VersionManifest {
+  version: string
+  generatedAt: string
+}
+
+function parseVersionNumber(version: string) {
+  const [majorPart, minorPart] = version.split(".")
+  const major = Number.parseInt(majorPart ?? "", 10)
+  const minor = Number.parseInt(minorPart ?? "", 10)
+  if (!Number.isFinite(major) || !Number.isFinite(minor)) return -1
+  return major * 100000 + minor
+}
+
+function isNewerVersion(candidateVersion: string, currentVersion: string) {
+  return parseVersionNumber(candidateVersion) > parseVersionNumber(currentVersion)
+}
 
 function AuthScreen() {
   const { signIn, signUp, enterGuestMode, error } = useAuth()
@@ -141,6 +163,13 @@ export default function MewBattlePage() {
   const { t, language } = useMewI18n()
   const [cardDesign, setCardDesign] = useState<CardDesignVariant>(DEFAULT_CARD_DESIGN)
   const [cardDesignReady, setCardDesignReady] = useState(false)
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
+  const [pwaInstalled, setPwaInstalled] = useState(false)
+  const [showInstallDialog, setShowInstallDialog] = useState(false)
+  const [installDialogMessage, setInstallDialogMessage] = useState<string | null>(null)
+  const [availableVersion, setAvailableVersion] = useState<string | null>(null)
+  const [showUpdateDialog, setShowUpdateDialog] = useState(false)
+  const [applyingUpdate, setApplyingUpdate] = useState(false)
   const [tab, setTab] = useState<TabKey>("collection")
   const [cards, setCards] = useState<MewCard[]>([])
   const [userCards, setUserCards] = useState<UserCard[]>([])
@@ -176,6 +205,75 @@ export default function MewBattlePage() {
   const [savingGameState, setSavingGameState] = useState(false)
 
   const userId = user?.uid ?? null
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const media = window.matchMedia("(display-mode: standalone)")
+    const updateInstalledState = () => {
+      const navigatorStandalone = typeof navigator !== "undefined" && "standalone" in navigator
+        ? Boolean((navigator as Navigator & { standalone?: boolean }).standalone)
+        : false
+      setPwaInstalled(media.matches || navigatorStandalone)
+    }
+
+    const handleBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault()
+      setDeferredInstallPrompt(event as BeforeInstallPromptEvent)
+    }
+
+    const handleAppInstalled = () => {
+      setPwaInstalled(true)
+      setDeferredInstallPrompt(null)
+      setInstallDialogMessage(t.pwaAlreadyInstalled)
+      setShowInstallDialog(true)
+    }
+
+    updateInstalledState()
+    media.addEventListener("change", updateInstalledState)
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
+    window.addEventListener("appinstalled", handleAppInstalled)
+
+    return () => {
+      media.removeEventListener("change", updateInstalledState)
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
+      window.removeEventListener("appinstalled", handleAppInstalled)
+    }
+  }, [t.pwaAlreadyInstalled])
+
+  useEffect(() => {
+    if (!pwaInstalled || typeof window === "undefined") return
+
+    const abortController = new AbortController()
+    let cancelled = false
+
+    const checkForInstalledAppUpdate = async () => {
+      try {
+        const response = await fetch(`/version.json?ts=${Date.now()}`, {
+          cache: "no-store",
+          signal: abortController.signal,
+        })
+        if (!response.ok) return
+
+        const manifest = await response.json() as VersionManifest
+        if (cancelled || !manifest.version) return
+
+        if (isNewerVersion(manifest.version, APP_VERSION)) {
+          setAvailableVersion(manifest.version)
+          setShowUpdateDialog(true)
+        }
+      } catch {
+        // Ignore network errors: offline installed apps should still boot normally.
+      }
+    }
+
+    void checkForInstalledAppUpdate()
+
+    return () => {
+      cancelled = true
+      abortController.abort()
+    }
+  }, [pwaInstalled])
 
   useEffect(() => {
     setCardDesign(loadLocalCardDesign())
@@ -215,6 +313,53 @@ export default function MewBattlePage() {
     // Deterministic per battle session to avoid SSR/client hydration mismatches.
     return pickCatCodexQuote(language, battleSessionId)
   }, [battleSessionId, language])
+
+  const isIosInstallFlow = useMemo(() => {
+    if (typeof navigator === "undefined") return false
+    return /iPad|iPhone|iPod/.test(navigator.userAgent)
+  }, [])
+
+  const handleInstallGame = useCallback(async () => {
+    if (pwaInstalled) {
+      setInstallDialogMessage(`${t.pwaAlreadyInstalled} ${t.pwaReinstallHint}`)
+      setShowInstallDialog(true)
+      return
+    }
+
+    if (deferredInstallPrompt) {
+      setInstallDialogMessage(t.pwaInstallReady)
+      setShowInstallDialog(true)
+      await deferredInstallPrompt.prompt()
+      const choice = await deferredInstallPrompt.userChoice
+      if (choice.outcome === "dismissed") {
+        setInstallDialogMessage(t.pwaInstallDismissed)
+      }
+      setDeferredInstallPrompt(null)
+      return
+    }
+
+    setInstallDialogMessage(isIosInstallFlow ? t.pwaIosInstallHint : t.pwaGenericInstallHint)
+    setShowInstallDialog(true)
+  }, [deferredInstallPrompt, isIosInstallFlow, pwaInstalled, t.pwaAlreadyInstalled, t.pwaGenericInstallHint, t.pwaInstallDismissed, t.pwaInstallReady, t.pwaIosInstallHint, t.pwaReinstallHint])
+
+  const handleApplyUpdate = useCallback(async () => {
+    if (typeof window === "undefined") return
+
+    setApplyingUpdate(true)
+    try {
+      if ("serviceWorker" in navigator) {
+        const registration = await navigator.serviceWorker.getRegistration()
+        if (registration) {
+          await registration.update()
+          registration.waiting?.postMessage({ type: "SKIP_WAITING" })
+        }
+      }
+    } catch {
+      // Fall through to reload: fetching the latest app shell is enough in online mode.
+    }
+
+    window.location.reload()
+  }, [])
 
   const loadData = useCallback(async (showSpinner = true) => {
     if (!userId) {
@@ -781,6 +926,11 @@ export default function MewBattlePage() {
                   <DropdownMenuRadioItem value="storybook">{t.cardDesignStorybook}</DropdownMenuRadioItem>
                 </DropdownMenuRadioGroup>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => { void handleInstallGame() }}>
+                  <Download className="h-4 w-4" />
+                  {pwaInstalled ? t.reinstallGame : t.installGame}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 {userId && (
                   <DropdownMenuItem variant="destructive" onSelect={() => setShowResetDialog(true)}>
                     <RotateCcw className="h-4 w-4" />
@@ -1246,6 +1396,40 @@ export default function MewBattlePage() {
       </Dialog>
 
       <VersionHistoryDialog open={showVersionHistory} onOpenChange={setShowVersionHistory} />
+
+      <Dialog open={showInstallDialog} onOpenChange={setShowInstallDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t.pwaInstallTitle}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">{installDialogMessage}</p>
+          <div className="flex justify-end pt-2">
+            <Button size="sm" onClick={() => setShowInstallDialog(false)}>{t.close}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showUpdateDialog} onOpenChange={setShowUpdateDialog}>
+        <DialogContent className="max-w-sm border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+          <DialogHeader>
+            <DialogTitle className="text-amber-100">{t.pwaUpdateTitle}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm text-slate-200/85">
+            <p>{t.pwaUpdateBody}</p>
+            <div className="rounded-xl border border-amber-400/20 bg-amber-500/10 p-3 text-xs text-amber-100/90">
+              <p>{t.pwaCurrentVersion}: v{APP_VERSION}</p>
+              <p>{t.pwaLatestVersion}: v{availableVersion ?? APP_VERSION}</p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button size="sm" variant="ghost" onClick={() => setShowVersionHistory(true)}>{t.whatsNew}</Button>
+            <Button size="sm" variant="ghost" onClick={() => setShowUpdateDialog(false)}>{t.pwaUpdateLater}</Button>
+            <Button size="sm" onClick={() => void handleApplyUpdate()} disabled={applyingUpdate}>
+              {applyingUpdate ? t.loadingData : t.pwaInstallUpdate}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <UnsavedDeckDialog
         open={showUnsavedDeckDialog}
