@@ -64,6 +64,7 @@ export function HelpPanel() {
         <h3 className="font-semibold">{t.helpCardLegendTitle}</h3>
         <p className="text-sm text-muted-foreground">{t.helpCardLegendIntro}</p>
         <p className="text-sm text-muted-foreground">{t.helpCardLegendAbilities}</p>
+        <p className="text-sm text-muted-foreground">{t.helpRarityOrder}</p>
         <div className="grid gap-3 md:grid-cols-[190px_1fr] items-start">
           <MewCardFace card={LEGEND_SAMPLE_CARD} owned={1} compact className="max-w-[190px]" />
           <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2.5 items-center text-xs">

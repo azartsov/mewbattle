@@ -46,6 +46,7 @@ import { HelpPanel } from "@/components/mew/help-panel"
 import { LanguageToggle } from "@/components/mew/language-toggle"
 import { PawLoader } from "@/components/mew/paw-loader"
 import { PreAuthUkiyoeSplash } from "@/components/mew/pre-auth-ukiyoe-splash"
+import { VersionHistoryDialog } from "@/components/mew/version-history-dialog"
 import { useMewI18n } from "@/lib/mew-i18n"
 import { pickRandomBoss, scaleBossForPlayer } from "@/lib/mew-bosses"
 import { APP_VERSION } from "@/lib/version"
@@ -58,6 +59,7 @@ function AuthScreen() {
   const { signIn, signUp, enterGuestMode, error } = useAuth()
   const { t } = useMewI18n()
   const [showForm, setShowForm] = useState(false)
+  const [showVersionHistory, setShowVersionHistory] = useState(false)
   const [mode, setMode] = useState<"signin" | "signup">("signin")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -85,7 +87,7 @@ function AuthScreen() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
-      <PreAuthUkiyoeSplash onEnter={() => setShowForm(true)} />
+      <PreAuthUkiyoeSplash onEnter={() => setShowForm(true)} onShowVersionHistory={() => setShowVersionHistory(true)} />
       <div className={`relative z-10 min-h-screen flex items-center justify-center p-4 transition-all duration-500 ${showForm ? "opacity-100" : "pointer-events-none opacity-0"}`}>
       <Card className="w-full max-w-sm p-4 space-y-3 border-amber-300/30 bg-card/92 backdrop-blur-sm shadow-2xl shadow-black/45">
         <div className="flex items-center justify-between gap-2">
@@ -127,6 +129,7 @@ function AuthScreen() {
         <Button variant="ghost" className="w-full" onClick={enterGuestMode}>{t.continueAsGuest}</Button>
       </Card>
       </div>
+      <VersionHistoryDialog open={showVersionHistory} onOpenChange={setShowVersionHistory} />
     </div>
   )
 }
@@ -158,6 +161,7 @@ export default function MewBattlePage() {
   const [resetting, setResetting] = useState(false)
   const [showResetDialog, setShowResetDialog] = useState(false)
   const [showLeaderboard, setShowLeaderboard] = useState(false)
+  const [showVersionHistory, setShowVersionHistory] = useState(false)
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [leaderboardLoading, setLeaderboardLoading] = useState(false)
   const [deckDraft, setDeckDraft] = useState<{ name: string; cardIds: string[] } | null>(null)
@@ -710,7 +714,7 @@ export default function MewBattlePage() {
                   {t.logout}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem disabled className="cursor-default opacity-70 focus:bg-transparent">
+                <DropdownMenuItem onSelect={() => setShowVersionHistory(true)}>
                   v{APP_VERSION}
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -1109,6 +1113,8 @@ export default function MewBattlePage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <VersionHistoryDialog open={showVersionHistory} onOpenChange={setShowVersionHistory} />
 
       <UnsavedDeckDialog
         open={showUnsavedDeckDialog}

@@ -4,6 +4,59 @@ function hasAbility(card: FighterCard, key: string): boolean {
   return card.ability.toLowerCase().includes(key)
 }
 
+export function hasMagicalHealingAbility(card: FighterCard): boolean {
+  return hasAbility(card, "healing")
+}
+
+export function getDefenderDodgeChance(defenderCard?: FighterCard): number {
+  if (!defenderCard) return 0.3
+  const baseId = defenderCard.id.split("__")[0]
+  if (baseId === "boss_raven") return 0.2
+  return 0.3
+}
+
+export function getMagicalHealingAmount(damage: number): number {
+  if (damage <= 0) return 0
+  return Math.max(4, Math.round(damage * 0.35))
+}
+
+export function applyTeamHeal(
+  fighters: FighterCard[],
+  requestedAmount: number,
+): { fighters: FighterCard[]; heal: { amount: number; targetId: string | null } } {
+  if (requestedAmount <= 0) {
+    return { fighters, heal: { amount: 0, targetId: null } }
+  }
+
+  const target = fighters
+    .filter((fighter) => fighter.currentHealth > 0 && fighter.currentHealth < fighter.health)
+    .sort((left, right) => {
+      if (left.currentHealth !== right.currentHealth) return left.currentHealth - right.currentHealth
+      return left.health - right.health
+    })[0]
+
+  if (!target) {
+    return { fighters, heal: { amount: 0, targetId: null } }
+  }
+
+  const restored = Math.min(requestedAmount, target.health - target.currentHealth)
+  if (restored <= 0) {
+    return { fighters, heal: { amount: 0, targetId: null } }
+  }
+
+  return {
+    fighters: fighters.map((fighter) => (
+      fighter.id === target.id
+        ? { ...fighter, currentHealth: fighter.currentHealth + restored }
+        : fighter
+    )),
+    heal: {
+      amount: restored,
+      targetId: target.id,
+    },
+  }
+}
+
 export function calculateTurn(
   attackerCard: FighterCard,
   defenderCard: FighterCard,
@@ -70,10 +123,10 @@ export function calculateTurn(
   }
 }
 
-export function rollAbilityProcs(): AbilityProcs {
+export function rollAbilityProcs(defenderCard?: FighterCard): AbilityProcs {
   return {
     attackerDoubleHit: Math.random() < 0.3,
-    defenderDodge: Math.random() < 0.3,
+    defenderDodge: Math.random() < getDefenderDodgeChance(defenderCard),
     defenderShield: Math.random() < 0.35,
     defenderCounter: Math.random() < 0.12,
   }

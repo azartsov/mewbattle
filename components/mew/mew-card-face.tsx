@@ -10,6 +10,7 @@ import { useMewI18n } from "@/lib/mew-i18n"
 import { BOSS_TYPE_ICON, BOSS_TYPE_THEME } from "@/lib/mew-bosses"
 import { CARD_META_RU, CARD_META_JA } from "@/lib/mew-card-meta"
 import { getCardSellPrice } from "@/lib/mew-firestore"
+import { getCardVisualTheme } from "@/lib/mew-card-visuals"
 import { CoinPawBadge } from "@/components/mew/coin-paw-badge"
 
 interface MewCardFaceProps {
@@ -56,6 +57,7 @@ export function MewCardFace({ card, owned, compact = false, className }: MewCard
   const displayAbility = metaRu?.ability ?? card.ability
   const [imgSrc, setImgSrc] = useState(card.imageUrl)
   const sellPrice = getCardSellPrice(card)
+  const visualTheme = getCardVisualTheme(card.id)
 
   const bossTypeLabel = (bossType: "raven" | "dog" | "rat") => {
     if (bossType === "raven") return t.bossRaven
@@ -72,9 +74,11 @@ export function MewCardFace({ card, owned, compact = false, className }: MewCard
         className,
       )}
     >
+      <div className="pointer-events-none absolute inset-0 opacity-95" style={{ backgroundImage: visualTheme.frameBackground }} />
       <div className={cn("pointer-events-none absolute inset-0 bg-gradient-to-br", theme.glow)} />
 
       <div className="relative border-b border-black/20">
+        <div className="absolute inset-0" style={{ backgroundImage: visualTheme.artBackground }} />
         <Image
           src={imgSrc}
           alt={card.name}
@@ -164,7 +168,7 @@ export function MewCardFace({ card, owned, compact = false, className }: MewCard
         </Dialog>
       </div>
 
-      <div className={cn("space-y-2 p-3", compact && "space-y-1.5 p-2.5")}>
+      <div className={cn("relative space-y-2 p-3", compact && "space-y-1.5 p-2.5")} style={{ backgroundImage: visualTheme.bodyBackground }}>
         <div className="flex items-start justify-between gap-2">
           <div>
             {CARD_META_JA[card.id] && (

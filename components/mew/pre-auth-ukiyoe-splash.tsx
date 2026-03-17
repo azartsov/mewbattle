@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button"
 import { LanguageToggle } from "@/components/mew/language-toggle"
 import { useMewI18n } from "@/lib/mew-i18n"
 import { pickCatCodexQuote, pickCatCodexQuoteRandom } from "@/lib/cat-codex"
+import { getCardVisualTheme } from "@/lib/mew-card-visuals"
 
 interface PreAuthUkiyoeSplashProps {
   onEnter: () => void
+  onShowVersionHistory: () => void
 }
 
 interface SplashCard {
@@ -52,9 +54,12 @@ const RARITY_BADGE: Record<SplashCard["rarity"], string> = {
 
 function SplashMiniCard({ card }: { card: SplashCard }) {
   const [imgSrc, setImgSrc] = useState(card.imageUrl)
+  const visualTheme = getCardVisualTheme(card.id)
   return (
     <div className={`relative w-[118px] overflow-hidden rounded-xl border-[1.5px] bg-[#10091e] shadow-2xl shadow-black/60 ${RARITY_BORDER[card.rarity]} ${RARITY_GLOW[card.rarity]}`}>
+      <div className="pointer-events-none absolute inset-0 opacity-95" style={{ backgroundImage: visualTheme.frameBackground }} />
       <div className="relative">
+        <div className="absolute inset-0" style={{ backgroundImage: visualTheme.artBackground }} />
         <Image
           src={imgSrc}
           alt={card.name}
@@ -68,7 +73,7 @@ function SplashMiniCard({ card }: { card: SplashCard }) {
           {card.rarity}
         </span>
       </div>
-      <div className="p-1.5">
+      <div className="relative p-1.5" style={{ backgroundImage: visualTheme.bodyBackground }}>
         <p className="truncate text-[10px] font-semibold leading-tight text-slate-100">{card.name}</p>
         <div className="mt-1 flex items-center gap-1 text-[9px] font-medium">
           <span className="rounded bg-rose-500/20 px-1 py-0.5 text-rose-200">ATK {card.attack}</span>
@@ -94,7 +99,7 @@ const BLOSSOM_POSITIONS: [number, number][] = [
   [258, 156], [208, 174], [174, 200], [238, 138], [280, 98], [330, 58],
 ]
 
-export function PreAuthUkiyoeSplash({ onEnter }: PreAuthUkiyoeSplashProps) {
+export function PreAuthUkiyoeSplash({ onEnter, onShowVersionHistory }: PreAuthUkiyoeSplashProps) {
   const { t, language } = useMewI18n()
   const [codexQuote, setCodexQuote] = useState(() => pickCatCodexQuote(language, 0))
 
@@ -263,6 +268,13 @@ export function PreAuthUkiyoeSplash({ onEnter }: PreAuthUkiyoeSplashProps) {
             onClick={onEnter}
           >
             {t.splashEnter}
+          </Button>
+          <Button
+            variant="ghost"
+            className="mt-2 h-8 rounded-full border border-amber-200/25 bg-black/20 px-5 text-xs font-semibold text-amber-100 hover:bg-black/35 hover:text-amber-50"
+            onClick={onShowVersionHistory}
+          >
+            {t.whatsNew}
           </Button>
         </div>
       </div>

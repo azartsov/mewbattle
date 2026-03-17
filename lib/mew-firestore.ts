@@ -107,6 +107,17 @@ const STARTER_CARDS: MewCard[] = [
     bossAffinities: [],
   },
   {
+    id: "cat_healer",
+    name: "Cat Healer",
+    attack: 15,
+    health: 44,
+    rarity: "epic",
+    imageUrl: "/cards/cat_healer.svg",
+    ability: "Magical healing",
+    lore: "A shrine healer who threads sakura light through the weakest ally when striking.",
+    bossAffinities: [],
+  },
+  {
     id: "cat_alchemist",
     name: "Cat Alchemist",
     attack: 12,
@@ -208,6 +219,7 @@ const RARITY_WEIGHTS: Record<CardRarity, number> = {
 
 const LOCAL_CARD_ART_BY_ID: Record<string, string> = {
   cat_knight: "/cards/cat_knight.svg",
+  cat_healer: "/cards/cat_healer.svg",
   cat_alchemist: "/cards/cat_alchemist.svg",
   cat_phantom: "/cards/cat_phantom.svg",
   cat_ninja: "/cards/cat_ninja.svg",
@@ -242,19 +254,20 @@ function pickUniqueCards(source: MewCard[], count: number): MewCard[] {
 function getBoosterCardCount(offer: BoosterOffer): number {
   const roll = Math.random()
   if (offer.id === "starter") {
-    if (roll < 0.55) return 0
-    if (roll < 0.9) return 1
+    // Make empty boosters noticeably rarer.
+    if (roll < 0.3) return 0
+    if (roll < 0.85) return 1
     return 2
   }
 
   if (offer.id === "hunter") {
-    if (roll < 0.35) return 0
-    if (roll < 0.8) return 1
+    if (roll < 0.18) return 0
+    if (roll < 0.75) return 1
     return 2
   }
 
-  if (roll < 0.2) return 0
-  if (roll < 0.65) return 1
+  if (roll < 0.1) return 0
+  if (roll < 0.61) return 1
   return 2
 }
 

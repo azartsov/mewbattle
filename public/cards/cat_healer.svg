@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7e2253"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="180" fill="url(#bg)"/>
+  <circle cx="252" cy="42" r="16" fill="#fde68a" opacity="0.9"/>
+  <path d="M28 142 C 78 112, 118 120, 164 138" fill="none" stroke="#fbcfe8" stroke-width="6" stroke-linecap="round" opacity="0.75"/>
+  <path d="M154 134 C 176 122, 194 104, 214 86" fill="none" stroke="#99f6e4" stroke-width="5" stroke-linecap="round" opacity="0.8"/>
+  <circle cx="160" cy="96" r="45" fill="#f4d2b8"/>
+  <polygon points="132,60 146,36 158,63" fill="#f4d2b8"/>
+  <polygon points="164,63 176,36 190,60" fill="#f4d2b8"/>
+  <circle cx="145" cy="96" r="6" fill="#4c1d3d"/>
+  <circle cx="175" cy="96" r="6" fill="#4c1d3d"/>
+  <ellipse cx="160" cy="111" rx="8" ry="5" fill="#fb7185"/>
+  <path d="M160 116 C 150 122, 138 122, 130 116" fill="none" stroke="#f8fafc" stroke-width="3" stroke-linecap="round"/>
+  <path d="M160 116 C 170 122, 182 122, 190 116" fill="none" stroke="#f8fafc" stroke-width="3" stroke-linecap="round"/>
+  <rect x="126" y="78" width="68" height="28" rx="10" fill="#9d174d" opacity="0.9"/>
+  <circle cx="145" cy="78" r="7" fill="#fbcfe8" opacity="0.95"/>
+  <circle cx="175" cy="78" r="7" fill="#99f6e4" opacity="0.95"/>
+  <path d="M145 78 L160 63 L175 78" fill="none" stroke="#fef3c7" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <ellipse cx="84" cy="58" rx="7" ry="4" fill="#fbcfe8" transform="rotate(-18 84 58)"/>
+  <ellipse cx="98" cy="70" rx="7" ry="4" fill="#f9a8d4" transform="rotate(22 98 70)"/>
+  <ellipse cx="226" cy="98" rx="7" ry="4" fill="#fbcfe8" transform="rotate(-28 226 98)"/>
+  <ellipse cx="238" cy="114" rx="7" ry="4" fill="#f9a8d4" transform="rotate(24 238 114)"/>
+  <rect x="34" y="24" width="120" height="28" rx="14" fill="#4c1d3d" opacity="0.9"/>
+  <text x="94" y="43" fill="#fdf2f8" font-family="Verdana" font-size="14" text-anchor="middle">Cat Healer</text>
+</svg>

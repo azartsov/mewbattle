@@ -9,12 +9,17 @@ export const CARD_META_RU: Record<string, CardMetaLocalized> = {
   cat_knight: {
     name: "Кот-Рыцарь",
     lore: "Верный страж храма, стоящий непоколебимо перед клювом и когтями врага.",
-    ability: "Стойка щита",
+    ability: "Стойка со щитом",
+  },
+  cat_healer: {
+    name: "Кот-Лекарь",
+    lore: "Святынный целитель, который во время удара проводит сакурный свет к самому ослабленному союзнику.",
+    ability: "Магическое излечение",
   },
   cat_alchemist: {
     name: "Кот-Алхимик",
     lore: "Тактик-аптекарь, поднимающий тониковый щит и удерживающий строй в бою.",
-    ability: "Тониковый щит",
+    ability: "Тонизирующий щит",
   },
   cat_phantom: {
     name: "Кот-Фантом",
@@ -66,6 +71,7 @@ export const CARD_META_RU: Record<string, CardMetaLocalized> = {
 /** Japanese kanji names shown above the card display name. */
 export const CARD_META_JA: Record<string, string> = {
   cat_knight: "騎士猫",
+  cat_healer: "癒術猫",
   cat_alchemist: "錬金猫",
   cat_phantom: "幻影猫",
   cat_ninja: "忍者猫",

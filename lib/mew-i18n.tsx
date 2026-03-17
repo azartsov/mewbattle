@@ -115,6 +115,7 @@ type MewTranslations = {
   helpCardLegendTitle: string
   helpCardLegendIntro: string
   helpCardLegendAbilities: string
+  helpRarityOrder: string
   helpStatAtk: string
   helpStatHp: string
   helpStatOwned: string
@@ -158,6 +159,8 @@ type MewTranslations = {
   bossTurnCountdown: string
   logout: string
   catCodexAttribution: string
+  versionHistoryTitle: string
+  whatsNew: string
   battleLockedHint: string
   battleEnterHint: string
   enterBattle: string
@@ -276,6 +279,7 @@ const translations: Record<MewLanguage, MewTranslations> = {
     helpCardLegendTitle: "Card Legend",
     helpCardLegendIntro: "Each card has combat stats and rarity tags that affect gameplay and economy.",
     helpCardLegendAbilities: "Also, every card has an Ability — a special trait that can trigger during battle.",
+    helpRarityOrder: "Rarity order: COMMON -> RARE -> EPIC -> LEGENDARY.",
     helpStatAtk: "ATK: attack power. Higher ATK means more damage per hit.",
     helpStatHp: "HP: health points. When HP reaches 0, the fighter is defeated.",
     helpStatOwned: "x1, x2, ...: how many copies of this card you own.",
@@ -319,6 +323,8 @@ const translations: Record<MewLanguage, MewTranslations> = {
     bossTurnCountdown: "Boss is choosing target...",
     logout: "Logout",
     catCodexAttribution: "quote from the Cat Codex-Do",
+    versionHistoryTitle: "Version History",
+    whatsNew: "What's New",
     battleLockedHint: "Battle is in progress: you can leave only after it ends.",
     battleEnterHint: "Press \"Enter battle\" to get a random boss.",
     enterBattle: "Enter battle",
@@ -435,6 +441,7 @@ const translations: Record<MewLanguage, MewTranslations> = {
     helpCardLegendTitle: "Расшифровка карточки",
     helpCardLegendIntro: "У каждой карты есть боевые параметры и редкость, которые влияют на бой и экономику.",
     helpCardLegendAbilities: "Кроме параметров и редкости, у каждой карты есть умение — особенность, которая может сработать в бою.",
+    helpRarityOrder: "Порядок редкости: COMMON -> RARE -> EPIC -> LEGENDARY.",
     helpStatAtk: "ATK: сила атаки. Чем выше значение, тем больше урон за удар.",
     helpStatHp: "HP: очки здоровья. При 0 HP боец выбывает.",
     helpStatOwned: "x1, x2, ...: количество копий карты в вашей коллекции.",
@@ -478,6 +485,8 @@ const translations: Record<MewLanguage, MewTranslations> = {
     bossTurnCountdown: "Босс выбирает цель...",
     logout: "Выйти",
     catCodexAttribution: "цитата из Кодекса Кота-До",
+    versionHistoryTitle: "История версий",
+    whatsNew: "Что нового",
     battleLockedHint: "Бой запущен: выйти можно только после завершения.",
     battleEnterHint: "Нажмите «Вступаем в бой», чтобы получить случайного босса.",
     enterBattle: "Вступаем в бой",

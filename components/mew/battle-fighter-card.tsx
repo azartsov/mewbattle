@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useMewI18n } from "@/lib/mew-i18n"
 import { BOSS_TYPE_ICON, BOSS_TYPE_THEME } from "@/lib/mew-bosses"
 import { CARD_META_RU, CARD_META_JA } from "@/lib/mew-card-meta"
+import { getCardVisualTheme } from "@/lib/mew-card-visuals"
 
 interface BattleFighterCardProps {
   fighter: FighterCard
@@ -46,6 +47,7 @@ export function BattleFighterCard({
   const displayAbility = metaRu?.ability ?? fighter.ability
   const fallbackSrc = role === "boss" ? "/bosses/evil_raven.svg" : "/cards/cat_knight.svg"
   const [imgSrc, setImgSrc] = useState(fighter.imageUrl || fallbackSrc)
+  const visualTheme = getCardVisualTheme(baseId)
 
   const bossTypeLabel = (bossType: "raven" | "dog" | "rat") => {
     if (bossType === "raven") return t.bossRaven
@@ -81,7 +83,9 @@ export function BattleFighterCard({
         className,
       )}
     >
+      <div className="pointer-events-none absolute inset-0 opacity-95" style={{ backgroundImage: visualTheme.frameBackground }} />
       <div className="relative">
+        <div className="absolute inset-0" style={{ backgroundImage: visualTheme.artBackground }} />
         <Image
           src={imgSrc}
           alt={fighter.name}
@@ -172,7 +176,7 @@ export function BattleFighterCard({
         </Dialog>
       </div>
 
-      <div className="space-y-1.5 p-2">
+      <div className="relative space-y-1.5 p-2" style={{ backgroundImage: visualTheme.bodyBackground }}>
         {CARD_META_JA[baseId] && (
           <p className="text-[8px] font-light tracking-[0.15em] text-muted-foreground/50 leading-none mb-0.5">{CARD_META_JA[baseId]}</p>
         )}

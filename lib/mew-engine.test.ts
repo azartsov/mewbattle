@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { calculateTurn } from "./mew-engine"
+import { applyTeamHeal, calculateTurn, getDefenderDodgeChance, getMagicalHealingAmount } from "./mew-engine"
 import type { FighterCard } from "./mew-types"
 
 const attacker: FighterCard = {
@@ -74,5 +74,29 @@ describe("calculateTurn", () => {
     expect(result.countered).toBe(true)
     expect(result.counterDamage).toBe(3)
     expect(result.attackerHealth).toBe(47)
+  })
+
+  it("reduces raven boss dodge chance to 20%", () => {
+    expect(getDefenderDodgeChance({ ...defender, id: "boss_raven", ability: "ninja dodge" })).toBe(0.2)
+    expect(getDefenderDodgeChance(defender)).toBe(0.3)
+  })
+
+  it("computes magical healing from dealt damage", () => {
+    expect(getMagicalHealingAmount(0)).toBe(0)
+    expect(getMagicalHealingAmount(10)).toBe(4)
+    expect(getMagicalHealingAmount(20)).toBe(7)
+  })
+
+  it("heals the weakest damaged ally only", () => {
+    const team: FighterCard[] = [
+      { ...attacker, id: "cat_healer__0", currentHealth: 40, health: 44, ability: "Magical healing" },
+      { ...defender, id: "cat_ninja__1", currentHealth: 9, health: 40, ability: "30% dodge" },
+      { ...defender, id: "cat_mage__2", currentHealth: 15, health: 38, ability: "Magic shield" },
+    ]
+
+    const result = applyTeamHeal(team, 6)
+
+    expect(result.heal).toEqual({ amount: 6, targetId: "cat_ninja__1" })
+    expect(result.fighters.find((fighter) => fighter.id === "cat_ninja__1")?.currentHealth).toBe(15)
   })
 })

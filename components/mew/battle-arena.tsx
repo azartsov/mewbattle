@@ -1,10 +1,10 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { Cat, Skull } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { calculateTurn, rollAbilityProcs } from "@/lib/mew-engine"
+import { applyTeamHeal, calculateTurn, getMagicalHealingAmount, hasMagicalHealingAbility, rollAbilityProcs } from "@/lib/mew-engine"
 import type { BattleLogEntry, FighterCard, MewCard } from "@/lib/mew-types"
 import { BattleFighterCard } from "@/components/mew/battle-fighter-card"
 import { useMewI18n } from "@/lib/mew-i18n"
@@ -69,6 +69,23 @@ interface DamagePetalFx {
   value: number
 }
 
+interface HealBurstFx {
+  targetId: string
+  label: string
+}
+
+const DAMAGE_PETAL_DURATION_MS = 2100
+const ABILITY_FX_DURATION_MS = 2400
+const HEALING_BURST_DURATION_MS = 2200
+const HEALING_SAKURA_PARTICLES = [
+  { left: "10%", top: "8%", dx: "26px", dy: "20px", rotate: "210deg", delay: "0ms", scale: 0.8 },
+  { left: "24%", top: "2%", dx: "8px", dy: "30px", rotate: "250deg", delay: "70ms", scale: 1 },
+  { left: "78%", top: "10%", dx: "-24px", dy: "24px", rotate: "230deg", delay: "120ms", scale: 0.9 },
+  { left: "88%", top: "22%", dx: "-18px", dy: "28px", rotate: "260deg", delay: "180ms", scale: 0.85 },
+  { left: "16%", top: "26%", dx: "16px", dy: "38px", rotate: "280deg", delay: "40ms", scale: 0.7 },
+  { left: "66%", top: "4%", dx: "-8px", dy: "34px", rotate: "240deg", delay: "150ms", scale: 0.95 },
+] as const
+
 export function BattleArena({
   deckCards,
   onSaveBattle,
@@ -77,7 +94,7 @@ export function BattleArena({
   showResetButton = true,
   onBattleResolved,
 }: BattleArenaProps) {
-  const { t } = useMewI18n()
+  const { t, language } = useMewI18n()
 
   const createBoss = useCallback(() => {
     const source = initialBoss ?? pickRandomBoss()
@@ -101,7 +118,9 @@ export function BattleArena({
   const [flashTargetId, setFlashTargetId] = useState<string | null>(null)
   const [lightningFx, setLightningFx] = useState<ActiveLightningFx | null>(null)
   const [damagePetals, setDamagePetals] = useState<DamagePetalFx[]>([])
+  const [healingPetals, setHealingPetals] = useState<DamagePetalFx[]>([])
   const [abilityFx, setAbilityFx] = useState<{ targetId: string; fxType: "fire" | "ice"; label: string } | null>(null)
+  const [healingFx, setHealingFx] = useState<HealBurstFx | null>(null)
 
   const arenaRef = useRef<HTMLDivElement | null>(null)
   const bossCardRef = useRef<HTMLDivElement | null>(null)
@@ -110,7 +129,9 @@ export function BattleArena({
   const shakeTimeoutRef = useRef<number | null>(null)
   const flashTimeoutRef = useRef<number | null>(null)
   const damagePetalTimeoutsRef = useRef<number[]>([])
+  const healingPetalTimeoutsRef = useRef<number[]>([])
   const abilityFxTimeoutRef = useRef<number | null>(null)
+  const healingFxTimeoutRef = useRef<number | null>(null)
   const fightersRef = useRef(fighters)
   // keep refs in sync so countdown closures always see the latest values
   useEffect(() => { fightersRef.current = fighters })
@@ -120,10 +141,21 @@ export function BattleArena({
     damagePetalTimeoutsRef.current = []
   }
 
+  const clearHealingPetalTimeouts = () => {
+    healingPetalTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId))
+    healingPetalTimeoutsRef.current = []
+  }
+
   const triggerAbilityFx = (targetId: string, fxType: "fire" | "ice", label: string) => {
     if (abilityFxTimeoutRef.current) window.clearTimeout(abilityFxTimeoutRef.current)
     setAbilityFx({ targetId, fxType, label })
-    abilityFxTimeoutRef.current = window.setTimeout(() => setAbilityFx(null), 1400)
+    abilityFxTimeoutRef.current = window.setTimeout(() => setAbilityFx(null), ABILITY_FX_DURATION_MS)
+  }
+
+  const triggerHealingFx = (targetId: string, label: string) => {
+    if (healingFxTimeoutRef.current) window.clearTimeout(healingFxTimeoutRef.current)
+    setHealingFx({ targetId, label })
+    healingFxTimeoutRef.current = window.setTimeout(() => setHealingFx(null), HEALING_BURST_DURATION_MS)
   }
 
   const aliveFighters = useMemo(() => fighters.filter((f) => f.currentHealth > 0), [fighters])
@@ -132,6 +164,10 @@ export function BattleArena({
   const canExecuteBossTurn = !battleOver && !!pendingBossTurn
   const showTurnPulse = canExecuteBossTurn || canExecuteCatTurn
   const bossTurnActive = !!pendingBossTurn
+  const doubleHitFxLabel = language === "ru" ? "УДАР x2!" : "× 2!"
+  const dodgeFxLabel = language === "ru" ? "УКЛОН!" : "DODGE!"
+  const shieldFxLabel = language === "ru" ? "ЩИТ!" : "SHIELD!"
+  const healingFxLabel = language === "ru" ? "ИСЦЕЛЕНИЕ!" : "HEALING!"
 
   useEffect(() => {
     setFighters(buildFighters(deckCards))
@@ -145,7 +181,9 @@ export function BattleArena({
     setFlashTargetId(null)
     setLightningFx(null)
     setDamagePetals([])
+    setHealingPetals([])
     setAbilityFx(null)
+    setHealingFx(null)
     setBossCountdownTick(null)
     setBossTargetPreviewId(null)
   }, [createBoss, deckCards])
@@ -156,7 +194,9 @@ export function BattleArena({
       if (shakeTimeoutRef.current) window.clearTimeout(shakeTimeoutRef.current)
       if (flashTimeoutRef.current) window.clearTimeout(flashTimeoutRef.current)
       if (abilityFxTimeoutRef.current) window.clearTimeout(abilityFxTimeoutRef.current)
+      if (healingFxTimeoutRef.current) window.clearTimeout(healingFxTimeoutRef.current)
       clearDamagePetalTimeouts()
+      clearHealingPetalTimeouts()
     }
   }, [])
 
@@ -203,8 +243,18 @@ export function BattleArena({
     setDamagePetals((prev) => [...prev, { id, targetId, value }])
     const timeoutId = window.setTimeout(() => {
       setDamagePetals((prev) => prev.filter((item) => item.id !== id))
-    }, 1250)
+    }, DAMAGE_PETAL_DURATION_MS)
     damagePetalTimeoutsRef.current.push(timeoutId)
+  }
+
+  const spawnHealingPetal = (targetId: string, value: number) => {
+    if (value <= 0) return
+    const id = `${targetId}-heal-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`
+    setHealingPetals((prev) => [...prev, { id, targetId, value }])
+    const timeoutId = window.setTimeout(() => {
+      setHealingPetals((prev) => prev.filter((item) => item.id !== id))
+    }, DAMAGE_PETAL_DURATION_MS)
+    healingPetalTimeoutsRef.current.push(timeoutId)
   }
 
   const startShake = (targetId: string) => {
@@ -320,21 +370,40 @@ export function BattleArena({
       attack: attacker.attack + affinity.bonusDamage,
     }
 
-    const playerTurn = calculateTurn(boostedAttacker, boss, rollAbilityProcs())
+    const playerTurn = calculateTurn(boostedAttacker, boss, rollAbilityProcs(boss))
     const affinityText = affinity.level > 0 && boss.bossType
       ? ` (${BOSS_TYPE_LABEL[boss.bossType]} mastery Lv${affinity.level} +${affinity.bonusDamage})`
       : ""
     const bossAfter = { ...boss, currentHealth: playerTurn.defenderHealth }
-    const fightersAfterPlayer = fighters.map((f) =>
+    const fightersAfterPlayerStrike = fighters.map((f) =>
       f.id === attacker.id ? { ...f, currentHealth: playerTurn.attackerHealth } : f,
     )
+    let fightersAfterPlayer = fightersAfterPlayerStrike
+    let healingAmount = 0
+    let healingTargetId: string | null = null
+
+    if (hasMagicalHealingAbility(attacker) && playerTurn.damage > 0) {
+      const healingResult = applyTeamHeal(fightersAfterPlayerStrike, getMagicalHealingAmount(playerTurn.damage))
+      fightersAfterPlayer = healingResult.fighters
+      healingAmount = healingResult.heal.amount
+      healingTargetId = healingResult.heal.targetId
+    }
+
+    const healingTargetName = healingTargetId
+      ? fightersAfterPlayer.find((fighter) => fighter.id === healingTargetId)?.name ?? null
+      : null
+    const healingLogText = healingAmount > 0 && healingTargetName
+      ? (language === "ru"
+        ? `; ${healingTargetName} получает лечение ${healingAmount}`
+        : `; ${healingTargetName} is healed for ${healingAmount}`)
+      : ""
 
     const nextLog: BattleLogEntry[] = [
       ...log,
       {
         turn,
         actor: "player",
-        text: `${playerTurn.text}${affinityText}`,
+        text: `${playerTurn.text}${affinityText}${healingLogText}`,
         damage: playerTurn.damage,
       },
     ]
@@ -346,9 +415,13 @@ export function BattleArena({
       vibrateHit(20)
       spawnDamagePetal("boss", playerTurn.damage)
     }
-    if (playerTurn.doubled) triggerAbilityFx(attacker.id, "fire", "× 2!")
-    else if (playerTurn.dodged) triggerAbilityFx("boss", "ice", "DODGE!")
-    else if (playerTurn.shielded) triggerAbilityFx("boss", "ice", "SHIELD!")
+    if (playerTurn.doubled) triggerAbilityFx(attacker.id, "fire", doubleHitFxLabel)
+    else if (playerTurn.dodged) triggerAbilityFx("boss", "ice", dodgeFxLabel)
+    else if (playerTurn.shielded) triggerAbilityFx("boss", "ice", shieldFxLabel)
+    if (healingAmount > 0 && healingTargetId) {
+      spawnHealingPetal(healingTargetId, healingAmount)
+      triggerHealingFx(healingTargetId, healingFxLabel)
+    }
 
     setFighters(fightersAfterPlayer)
     setBoss(bossAfter)
@@ -382,7 +455,7 @@ export function BattleArena({
     const target = fighters.find((f) => f.id === targetId)
     if (!target || target.currentHealth <= 0) return
 
-    const bossTurn = calculateTurn(pendingBossTurn.bossSnapshot, target, rollAbilityProcs())
+    const bossTurn = calculateTurn(pendingBossTurn.bossSnapshot, target, rollAbilityProcs(target))
     const updatedFighters = fighters.map((f) =>
       f.id === target.id ? { ...f, currentHealth: bossTurn.defenderHealth } : f,
     )
@@ -404,9 +477,9 @@ export function BattleArena({
       vibrateHit([16, 24, 16])
       spawnDamagePetal(target.id, bossTurn.damage)
     }
-    if (bossTurn.doubled) triggerAbilityFx("boss", "fire", "× 2!")
-    else if (bossTurn.dodged) triggerAbilityFx(target.id, "ice", "DODGE!")
-    else if (bossTurn.shielded) triggerAbilityFx(target.id, "ice", "SHIELD!")
+    if (bossTurn.doubled) triggerAbilityFx("boss", "fire", doubleHitFxLabel)
+    else if (bossTurn.dodged) triggerAbilityFx(target.id, "ice", dodgeFxLabel)
+    else if (bossTurn.shielded) triggerAbilityFx(target.id, "ice", shieldFxLabel)
 
     setFighters(updatedFighters)
     setLog(finalLog)
@@ -496,14 +569,55 @@ export function BattleArena({
               opacity: 0;
               transform: translate(-50%, 8px) scale(0.9);
             }
-            15% {
+            18% {
               opacity: 1;
               transform: translate(-50%, 0px) scale(1);
+            }
+            72% {
+              opacity: 1;
+              transform: translate(-50%, -18px) scale(1.01);
             }
             100% {
               opacity: 0;
               transform: translate(-50%, -34px) scale(1.02);
             }
+          }
+          @keyframes sakura-heal-float {
+            0% {
+              opacity: 0;
+              transform: translate(-50%, 10px) scale(0.88);
+            }
+            18% {
+              opacity: 1;
+              transform: translate(-50%, -2px) scale(1);
+            }
+            82% {
+              opacity: 1;
+              transform: translate(-50%, -18px) scale(1.01);
+            }
+            100% {
+              opacity: 0;
+              transform: translate(-50%, -30px) scale(1.02);
+            }
+          }
+          @keyframes healing-petal-drift {
+            0% {
+              opacity: 0;
+              transform: translate(0, 0) rotate(0deg) scale(var(--heal-scale));
+            }
+            18% {
+              opacity: 0.95;
+            }
+            100% {
+              opacity: 0;
+              transform: translate(var(--heal-dx), var(--heal-dy)) rotate(var(--heal-rot)) scale(calc(var(--heal-scale) * 0.92));
+            }
+          }
+          @keyframes healing-label-float {
+            0% { opacity: 0; transform: translate(-50%, 2px) scale(0.85); }
+            18% { opacity: 1; transform: translate(-50%, -8px) scale(1); }
+            82% { opacity: 1; transform: translate(-50%, -20px) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -30px) scale(0.96); }
           }
           .battle-shake {
             animation: battle-shake 0.42s ease-in-out;
@@ -512,7 +626,10 @@ export function BattleArena({
             animation: impact-flash 0.22s ease-out;
           }
           .battle-damage-petal {
-            animation: sakura-damage-float 1.2s ease-out forwards;
+            animation: sakura-damage-float ${DAMAGE_PETAL_DURATION_MS}ms ease-out forwards;
+          }
+          .battle-heal-petal {
+            animation: sakura-heal-float ${DAMAGE_PETAL_DURATION_MS}ms ease-out forwards;
           }
           @keyframes turn-cta-pulse-rose {
             0%, 100% {
@@ -550,13 +667,15 @@ export function BattleArena({
           }
           @keyframes ability-label-float {
             0% { opacity: 0; transform: translate(-50%, 0px) scale(0.8); }
-            20% { opacity: 1; transform: translate(-50%, -8px) scale(1); }
-            85% { opacity: 1; transform: translate(-50%, -22px) scale(1); }
+            18% { opacity: 1; transform: translate(-50%, -8px) scale(1); }
+            82% { opacity: 1; transform: translate(-50%, -20px) scale(1); }
             100% { opacity: 0; transform: translate(-50%, -28px) scale(0.95); }
           }
           .ability-fire { animation: ability-fire-border 0.38s ease-in-out 3; border-radius: 12px; }
           .ability-ice { animation: ability-ice-border 0.38s ease-in-out 3; border-radius: 12px; }
-          .ability-label-float { animation: ability-label-float 1.3s ease-out forwards; }
+          .ability-label-float { animation: ability-label-float ${ABILITY_FX_DURATION_MS}ms ease-out forwards; }
+          .healing-sakura-petal { animation: healing-petal-drift 1.3s ease-out forwards; }
+          .healing-label-float { animation: healing-label-float ${HEALING_BURST_DURATION_MS}ms ease-out forwards; }
         `}</style>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -605,6 +724,16 @@ export function BattleArena({
                   -{petal.value}
                 </span>
               ))}
+            {healingPetals
+              .filter((petal) => petal.targetId === "boss")
+              .map((petal) => (
+                <span
+                  key={petal.id}
+                  className="battle-heal-petal pointer-events-none absolute left-1/2 top-0 z-50 inline-flex items-center rounded-full border border-emerald-300/65 bg-emerald-300/20 px-2 py-0.5 text-xs font-semibold text-emerald-50 backdrop-blur"
+                >
+                  +{petal.value}
+                </span>
+              ))}
             {flashTargetId === "boss" && (
               <div className="battle-impact-flash pointer-events-none absolute inset-0 z-40 rounded-xl bg-white/60" />
             )}
@@ -613,6 +742,28 @@ export function BattleArena({
                 <div className={`pointer-events-none absolute inset-0 z-[35] rounded-xl ${abilityFx.fxType === "fire" ? "ability-fire" : "ability-ice"}`} />
                 <span className={`ability-label-float pointer-events-none absolute left-1/2 bottom-2 z-50 inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold backdrop-blur ${abilityFx.fxType === "fire" ? "border-orange-400/65 bg-orange-900/75 text-orange-100" : "border-cyan-400/65 bg-cyan-900/75 text-cyan-100"}`}>
                   {abilityFx.label}
+                </span>
+              </>
+            )}
+            {healingFx?.targetId === "boss" && (
+              <>
+                {HEALING_SAKURA_PARTICLES.map((petal, index) => (
+                  <span
+                    key={`boss-healing-${index}`}
+                    className="healing-sakura-petal pointer-events-none absolute z-[36] h-3 w-2 rounded-full bg-pink-200/85"
+                    style={{
+                      left: petal.left,
+                      top: petal.top,
+                      "--heal-dx": petal.dx,
+                      "--heal-dy": petal.dy,
+                      "--heal-rot": petal.rotate,
+                      "--heal-scale": String(petal.scale),
+                      animationDelay: petal.delay,
+                    } as CSSProperties}
+                  />
+                ))}
+                <span className="healing-label-float pointer-events-none absolute left-1/2 bottom-2 z-50 inline-flex items-center rounded-full border border-emerald-300/65 bg-emerald-950/75 px-2 py-0.5 text-[11px] font-bold text-emerald-100 backdrop-blur">
+                  {healingFx.label}
                 </span>
               </>
             )}
@@ -680,6 +831,16 @@ export function BattleArena({
                       -{petal.value}
                     </span>
                   ))}
+                {healingPetals
+                  .filter((petal) => petal.targetId === fighter.id)
+                  .map((petal) => (
+                    <span
+                      key={petal.id}
+                      className="battle-heal-petal pointer-events-none absolute left-1/2 top-0 z-50 inline-flex items-center rounded-full border border-emerald-300/65 bg-emerald-300/20 px-2 py-0.5 text-xs font-semibold text-emerald-50 backdrop-blur"
+                    >
+                      +{petal.value}
+                    </span>
+                  ))}
                 {flashTargetId === fighter.id && (
                   <div className="battle-impact-flash pointer-events-none absolute inset-0 z-40 rounded-xl bg-white/55" />
                 )}
@@ -688,6 +849,28 @@ export function BattleArena({
                     <div className={`pointer-events-none absolute inset-0 z-[35] rounded-xl ${abilityFx.fxType === "fire" ? "ability-fire" : "ability-ice"}`} />
                     <span className={`ability-label-float pointer-events-none absolute left-1/2 bottom-2 z-50 inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold backdrop-blur ${abilityFx.fxType === "fire" ? "border-orange-400/65 bg-orange-900/75 text-orange-100" : "border-cyan-400/65 bg-cyan-900/75 text-cyan-100"}`}>
                       {abilityFx.label}
+                    </span>
+                  </>
+                )}
+                {healingFx?.targetId === fighter.id && (
+                  <>
+                    {HEALING_SAKURA_PARTICLES.map((petal, index) => (
+                      <span
+                        key={`${fighter.id}-healing-${index}`}
+                        className="healing-sakura-petal pointer-events-none absolute z-[36] h-3 w-2 rounded-full bg-pink-200/85"
+                        style={{
+                          left: petal.left,
+                          top: petal.top,
+                          "--heal-dx": petal.dx,
+                          "--heal-dy": petal.dy,
+                          "--heal-rot": petal.rotate,
+                          "--heal-scale": String(petal.scale),
+                          animationDelay: petal.delay,
+                        } as CSSProperties}
+                      />
+                    ))}
+                    <span className="healing-label-float pointer-events-none absolute left-1/2 bottom-2 z-50 inline-flex items-center rounded-full border border-emerald-300/65 bg-emerald-950/75 px-2 py-0.5 text-[11px] font-bold text-emerald-100 backdrop-blur">
+                      {healingFx.label}
                     </span>
                   </>
                 )}
