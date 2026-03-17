@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
+import Image from "next/image"
 import { Cat, Skull } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -12,8 +13,9 @@ import { BOSS_TYPE_LABEL, pickRandomBoss } from "@/lib/mew-bosses"
 
 interface BattleArenaProps {
   deckCards: MewCard[]
-  onSaveBattle: (winnerId: string, bossId: string, log: BattleLogEntry[], hpBonus: number) => Promise<void>
+  onSaveBattle: (winnerId: string, bossId: string, log: BattleLogEntry[], hpBonus: number) => Promise<number>
   deckName: string
+  predictedWinRewardBase?: number
   initialBoss?: FighterCard
   showResetButton?: boolean
   onBattleResolved?: () => void
@@ -55,6 +57,7 @@ interface LightningLine {
   color: string
   width: number
   opacity: number
+  delayMs: number
 }
 
 interface ActiveLightningFx {
@@ -74,9 +77,57 @@ interface HealBurstFx {
   label: string
 }
 
+interface HealingStreamFx {
+  sourceId: string
+  targetId: string
+  width: number
+  height: number
+  paths: Array<{ d: string; opacity: number; delayMs: number }>
+  petals: Array<{
+    id: string
+    left: number
+    top: number
+    dx: string
+    dy: string
+    rotate: string
+    delayMs: number
+    scale: number
+  }>
+}
+
+interface BattleResolutionState {
+  winnerId: "player" | "boss"
+  rewardCoins: number
+  defeatQuote: string | null
+}
+
 const DAMAGE_PETAL_DURATION_MS = 2100
 const ABILITY_FX_DURATION_MS = 2400
 const HEALING_BURST_DURATION_MS = 2200
+const HEALING_STREAM_DURATION_MS = 1700
+const BATTLE_RESULT_REVEAL_DELAY_MS = 1400
+const BOSS_COUNTER_STEP_MS = 650
+const BOSS_COUNTER_RESOLVE_DELAY_MS = 2050
+const DEFEAT_QUOTES: Record<"ru" | "en", string[]> = {
+  ru: [
+    "Победа и поражение — это вопрос временных обстоятельств. Чтобы избежать позора, нужно выбрать иной путь — послеобеденная дрёма.",
+    "Кот, который впадает в тоску, встречаясь с невзгодами, бесполезен.",
+    "Коты должны стремиться к тому, чтобы никогда не падать духом перед лицом невзгод и чрезмерно не радоваться, когда нам сопутствует удача.",
+    "Кот бесполезен, если он не возвышается над другими и не стоит непоколебимо посреди бури. Коту всегда нужно подниматься и двигаться дальше, потому что его ждут новые испытания.",
+    "Смелость — это умение скрежетать зубами; это решимость добиваться своего любой ценой, вопреки самым неблагоприятным обстоятельствам.",
+    "Кот, который ни разу не ошибался, — опасен.",
+    "Способ победить других Коту не ведом, однако как победить себя, Коту известно.",
+  ],
+  en: [
+    "Victory and defeat are matters of temporary circumstances. To avoid disgrace, one should choose a different path: an afternoon nap.",
+    "A cat who falls into gloom when meeting hardship is useless.",
+    "Cats should strive never to lose heart in the face of hardship and not to rejoice too greatly when fortune smiles on them.",
+    "A cat is useless if it does not rise above others and stand unshaken amid the storm. A cat must always rise and move on, because new trials await.",
+    "Courage is the ability to grit one's teeth; it is the resolve to achieve one's aim at any cost, despite the harshest circumstances.",
+    "A cat who has never made a mistake is dangerous.",
+    "The way to defeat others may be unknown to the Cat, but the way to defeat oneself is known.",
+  ],
+}
 const HEALING_SAKURA_PARTICLES = [
   { left: "10%", top: "8%", dx: "26px", dy: "20px", rotate: "210deg", delay: "0ms", scale: 0.8 },
   { left: "24%", top: "2%", dx: "8px", dy: "30px", rotate: "250deg", delay: "70ms", scale: 1 },
@@ -90,11 +141,17 @@ export function BattleArena({
   deckCards,
   onSaveBattle,
   deckName,
+  predictedWinRewardBase = 0,
   initialBoss,
   showResetButton = true,
   onBattleResolved,
 }: BattleArenaProps) {
   const { t, language } = useMewI18n()
+
+  const getRandomDefeatQuote = useCallback(() => {
+    const quotes = DEFEAT_QUOTES[language]
+    return quotes[Math.floor(Math.random() * quotes.length)]
+  }, [language])
 
   const createBoss = useCallback(() => {
     const source = initialBoss ?? pickRandomBoss()
@@ -121,6 +178,8 @@ export function BattleArena({
   const [healingPetals, setHealingPetals] = useState<DamagePetalFx[]>([])
   const [abilityFx, setAbilityFx] = useState<{ targetId: string; fxType: "fire" | "ice"; label: string } | null>(null)
   const [healingFx, setHealingFx] = useState<HealBurstFx | null>(null)
+  const [healingStreamFx, setHealingStreamFx] = useState<HealingStreamFx | null>(null)
+  const [battleResolution, setBattleResolution] = useState<BattleResolutionState | null>(null)
 
   const arenaRef = useRef<HTMLDivElement | null>(null)
   const bossCardRef = useRef<HTMLDivElement | null>(null)
@@ -132,6 +191,8 @@ export function BattleArena({
   const healingPetalTimeoutsRef = useRef<number[]>([])
   const abilityFxTimeoutRef = useRef<number | null>(null)
   const healingFxTimeoutRef = useRef<number | null>(null)
+  const healingStreamTimeoutRef = useRef<number | null>(null)
+  const battleResolutionRevealTimeoutRef = useRef<number | null>(null)
   const fightersRef = useRef(fighters)
   // keep refs in sync so countdown closures always see the latest values
   useEffect(() => { fightersRef.current = fighters })
@@ -146,6 +207,48 @@ export function BattleArena({
     healingPetalTimeoutsRef.current = []
   }
 
+  const clearHealingStreamTimeout = () => {
+    if (healingStreamTimeoutRef.current) {
+      window.clearTimeout(healingStreamTimeoutRef.current)
+      healingStreamTimeoutRef.current = null
+    }
+  }
+
+  const clearBattleResolutionRevealTimeout = () => {
+    if (battleResolutionRevealTimeoutRef.current) {
+      window.clearTimeout(battleResolutionRevealTimeoutRef.current)
+      battleResolutionRevealTimeoutRef.current = null
+    }
+  }
+
+  const scheduleBattleResolution = (
+    winnerId: "player" | "boss",
+    rewardCoins: number,
+    persistBattle: () => Promise<number>,
+  ) => {
+    clearBattleResolutionRevealTimeout()
+    battleResolutionRevealTimeoutRef.current = window.setTimeout(() => {
+      setBattleResolution({
+        winnerId,
+        rewardCoins,
+        defeatQuote: winnerId === "boss" ? getRandomDefeatQuote() : null,
+      })
+      setSaving(true)
+      void persistBattle()
+        .then((settledRewardCoins) => {
+          setBattleResolution((current) => (
+            current?.winnerId === winnerId
+              ? { ...current, rewardCoins: settledRewardCoins }
+              : current
+          ))
+        })
+        .finally(() => {
+          setSaving(false)
+        })
+      battleResolutionRevealTimeoutRef.current = null
+    }, BATTLE_RESULT_REVEAL_DELAY_MS)
+  }
+
   const triggerAbilityFx = (targetId: string, fxType: "fire" | "ice", label: string) => {
     if (abilityFxTimeoutRef.current) window.clearTimeout(abilityFxTimeoutRef.current)
     setAbilityFx({ targetId, fxType, label })
@@ -156,6 +259,64 @@ export function BattleArena({
     if (healingFxTimeoutRef.current) window.clearTimeout(healingFxTimeoutRef.current)
     setHealingFx({ targetId, label })
     healingFxTimeoutRef.current = window.setTimeout(() => setHealingFx(null), HEALING_BURST_DURATION_MS)
+  }
+
+  const triggerHealingStream = (sourceId: string, targetId: string) => {
+    const arenaEl = arenaRef.current
+    const sourceEl = allyCardRefs.current[sourceId]
+    const targetEl = allyCardRefs.current[targetId]
+    if (!arenaEl || !sourceEl || !targetEl) return
+
+    const arenaRect = arenaEl.getBoundingClientRect()
+    const source = toLocalCenter(sourceEl, arenaEl)
+    const target = toLocalCenter(targetEl, arenaEl)
+    const dx = target.x - source.x
+    const dy = target.y - source.y
+    const length = Math.hypot(dx, dy) || 1
+    const nx = -dy / length
+    const ny = dx / length
+    const midpointX = (source.x + target.x) / 2
+    const midpointY = (source.y + target.y) / 2
+
+    const paths = [-26, 0, 26].map((offset, index) => {
+      const cx = midpointX + nx * offset
+      const cy = midpointY + ny * offset - 24
+      return {
+        d: `M ${source.x} ${source.y} Q ${cx} ${cy} ${target.x} ${target.y}`,
+        opacity: 0.6 - index * 0.12,
+        delayMs: index * 120,
+      }
+    })
+
+    const petals = Array.from({ length: 12 }, (_, index) => {
+      const spread = (Math.random() * 22) - 11
+      const launchX = source.x + nx * spread
+      const launchY = source.y + ny * spread * 0.6
+      return {
+        id: `${sourceId}-${targetId}-${index}-${Date.now()}`,
+        left: launchX,
+        top: launchY,
+        dx: `${dx + nx * spread * 0.45}px`,
+        dy: `${dy + ny * spread * 0.75}px`,
+        rotate: `${150 + Math.round(Math.random() * 180)}deg`,
+        delayMs: index * 70,
+        scale: 0.8 + Math.random() * 0.6,
+      }
+    })
+
+    clearHealingStreamTimeout()
+    setHealingStreamFx({
+      sourceId,
+      targetId,
+      width: arenaRect.width,
+      height: arenaRect.height,
+      paths,
+      petals,
+    })
+    healingStreamTimeoutRef.current = window.setTimeout(() => {
+      setHealingStreamFx(null)
+      healingStreamTimeoutRef.current = null
+    }, HEALING_STREAM_DURATION_MS)
   }
 
   const aliveFighters = useMemo(() => fighters.filter((f) => f.currentHealth > 0), [fighters])
@@ -184,6 +345,7 @@ export function BattleArena({
     setHealingPetals([])
     setAbilityFx(null)
     setHealingFx(null)
+    setBattleResolution(null)
     setBossCountdownTick(null)
     setBossTargetPreviewId(null)
   }, [createBoss, deckCards])
@@ -197,6 +359,8 @@ export function BattleArena({
       if (healingFxTimeoutRef.current) window.clearTimeout(healingFxTimeoutRef.current)
       clearDamagePetalTimeouts()
       clearHealingPetalTimeouts()
+      clearHealingStreamTimeout()
+      clearBattleResolutionRevealTimeout()
     }
   }, [])
 
@@ -218,15 +382,15 @@ export function BattleArena({
     setBossCountdownTick(3)
     setBossTargetPreviewId(pickRandom())
 
-    const t1 = window.setTimeout(() => { if (!cancelled) setBossCountdownTick(2) }, 1000)
-    const t2 = window.setTimeout(() => { if (!cancelled) setBossCountdownTick(1) }, 2000)
+    const t1 = window.setTimeout(() => { if (!cancelled) setBossCountdownTick(2) }, BOSS_COUNTER_STEP_MS)
+    const t2 = window.setTimeout(() => { if (!cancelled) setBossCountdownTick(1) }, BOSS_COUNTER_STEP_MS * 2)
     const tResolve = window.setTimeout(() => {
       if (cancelled) return
       const finalTarget = alive[Math.floor(Math.random() * alive.length)]
       setBossCountdownTick(null)
       setBossTargetPreviewId(null)
       void resolveBossTurnRef.current(finalTarget.id)
-    }, 3100)
+    }, BOSS_COUNTER_RESOLVE_DELAY_MS)
 
     return () => {
       cancelled = true
@@ -335,6 +499,7 @@ export function BattleArena({
       color,
       width: 1.8 + idx * 0.35,
       opacity: 0.95 - idx * 0.12,
+      delayMs: idx * 38,
     }))
 
     setLightningFx({
@@ -383,7 +548,11 @@ export function BattleArena({
     let healingTargetId: string | null = null
 
     if (hasMagicalHealingAbility(attacker) && playerTurn.damage > 0) {
-      const healingResult = applyTeamHeal(fightersAfterPlayerStrike, getMagicalHealingAmount(playerTurn.damage))
+      const healingResult = applyTeamHeal(
+        fightersAfterPlayerStrike,
+        getMagicalHealingAmount(playerTurn.damage),
+        attacker.id,
+      )
       fightersAfterPlayer = healingResult.fighters
       healingAmount = healingResult.heal.amount
       healingTargetId = healingResult.heal.targetId
@@ -420,6 +589,7 @@ export function BattleArena({
     else if (playerTurn.shielded) triggerAbilityFx("boss", "ice", shieldFxLabel)
     if (healingAmount > 0 && healingTargetId) {
       spawnHealingPetal(healingTargetId, healingAmount)
+      triggerHealingStream(attacker.id, healingTargetId)
       triggerHealingFx(healingTargetId, healingFxLabel)
     }
 
@@ -431,14 +601,9 @@ export function BattleArena({
 
     if (bossAfter.currentHealth <= 0) {
       setTurn((t) => t + 1)
-      setSaving(true)
       const hpBonus = fightersAfterPlayer.reduce((sum, f) => sum + Math.max(0, f.currentHealth), 0)
-      try {
-        await onSaveBattle("player", boss.id, nextLog, hpBonus)
-        onBattleResolved?.()
-      } finally {
-        setSaving(false)
-      }
+      const fallbackRewardCoins = predictedWinRewardBase + hpBonus
+      scheduleBattleResolution("player", fallbackRewardCoins, () => onSaveBattle("player", boss.id, nextLog, hpBonus))
       return
     }
 
@@ -489,13 +654,7 @@ export function BattleArena({
     setDraggedId(null)
 
     if (updatedFighters.every((f) => f.currentHealth <= 0)) {
-      setSaving(true)
-      try {
-        await onSaveBattle("boss", boss.id, finalLog, 0)
-        onBattleResolved?.()
-      } finally {
-        setSaving(false)
-      }
+      scheduleBattleResolution("boss", 0, () => onSaveBattle("boss", boss.id, finalLog, 0))
     }
   }
   // keep ref up-to-date so countdown closure always calls the latest version
@@ -517,7 +676,22 @@ export function BattleArena({
     setDraggedId(null)
     setTapSelectedAllyId(null)
     setDamagePetals([])
+    setHealingPetals([])
     setAbilityFx(null)
+    setHealingFx(null)
+    setHealingStreamFx(null)
+    clearBattleResolutionRevealTimeout()
+    setBattleResolution(null)
+  }
+
+  const handleBattleOutcomeAction = () => {
+    if (showResetButton) {
+      reset()
+      return
+    }
+
+    setBattleResolution(null)
+    onBattleResolved?.()
   }
 
   const handleBossTap = () => {
@@ -619,6 +793,27 @@ export function BattleArena({
             82% { opacity: 1; transform: translate(-50%, -20px) scale(1); }
             100% { opacity: 0; transform: translate(-50%, -30px) scale(0.96); }
           }
+          @keyframes healing-stream-dash {
+            0% { stroke-dashoffset: 32; opacity: 0; }
+            14% { opacity: 0.95; }
+            100% { stroke-dashoffset: 0; opacity: 0; }
+          }
+          @keyframes healing-stream-flight {
+            0% {
+              opacity: 0;
+              transform: translate(0, 0) rotate(0deg) scale(var(--heal-stream-scale));
+            }
+            16% {
+              opacity: 0.95;
+            }
+            72% {
+              opacity: 1;
+            }
+            100% {
+              opacity: 0;
+              transform: translate(var(--heal-stream-dx), var(--heal-stream-dy)) rotate(var(--heal-stream-rot)) scale(calc(var(--heal-stream-scale) * 0.76));
+            }
+          }
           .battle-shake {
             animation: battle-shake 0.42s ease-in-out;
           }
@@ -674,8 +869,23 @@ export function BattleArena({
           .ability-fire { animation: ability-fire-border 0.38s ease-in-out 3; border-radius: 12px; }
           .ability-ice { animation: ability-ice-border 0.38s ease-in-out 3; border-radius: 12px; }
           .ability-label-float { animation: ability-label-float ${ABILITY_FX_DURATION_MS}ms ease-out forwards; }
+          .healing-stream-path { animation: healing-stream-dash ${HEALING_STREAM_DURATION_MS}ms ease-out forwards; }
+          .healing-stream-petal { animation: healing-stream-flight ${HEALING_STREAM_DURATION_MS}ms ease-out forwards; }
           .healing-sakura-petal { animation: healing-petal-drift 1.3s ease-out forwards; }
           .healing-label-float { animation: healing-label-float ${HEALING_BURST_DURATION_MS}ms ease-out forwards; }
+          @keyframes battle-return-button-glow {
+            0%, 100% {
+              box-shadow: 0 0 0 0 rgba(255,255,255,0.14), 0 10px 24px rgba(15,23,42,0.28);
+              transform: translateY(0);
+            }
+            50% {
+              box-shadow: 0 0 0 5px rgba(255,255,255,0.08), 0 0 28px rgba(250,204,21,0.24), 0 14px 30px rgba(15,23,42,0.32);
+              transform: translateY(-1px);
+            }
+          }
+          .battle-return-button-glow {
+            animation: battle-return-button-glow 1.2s ease-in-out infinite;
+          }
         `}</style>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -703,14 +913,55 @@ export function BattleArena({
                   key={idx}
                   points={line.points}
                   fill="none"
-                  stroke={line.color}
+                  stroke={idx === 0 ? "#f5f3ff" : idx === 1 ? "#c4b5fd" : "#f9a8d4"}
                   strokeWidth={line.width}
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeOpacity={line.opacity}
+                  className="lightning-bolt"
+                  style={{ animationDelay: `${line.delayMs}ms` }}
                 />
               ))}
             </svg>
+          )}
+          {healingStreamFx && (
+            <>
+              <svg
+                className="pointer-events-none absolute inset-0 z-[32]"
+                viewBox={`0 0 ${Math.max(1, healingStreamFx.width)} ${Math.max(1, healingStreamFx.height)}`}
+                preserveAspectRatio="none"
+                aria-hidden="true"
+              >
+                {healingStreamFx.paths.map((path, index) => (
+                  <path
+                    key={`${healingStreamFx.sourceId}-${healingStreamFx.targetId}-${index}`}
+                    d={path.d}
+                    fill="none"
+                    stroke="#f9a8d4"
+                    strokeWidth={index === 1 ? 4 : 3}
+                    strokeLinecap="round"
+                    strokeOpacity={path.opacity}
+                    strokeDasharray="12 12"
+                    className="healing-stream-path"
+                    style={{ animationDelay: `${path.delayMs}ms` }}
+                  />
+                ))}
+              </svg>
+              {healingStreamFx.petals.map((petal) => (
+                <span
+                  key={petal.id}
+                  className="healing-stream-petal pointer-events-none absolute z-[33] h-4 w-2.5 rounded-full bg-pink-200/95 shadow-[0_0_10px_rgba(251,207,232,0.6)]"
+                  style={{
+                    left: `${petal.left}px`,
+                    top: `${petal.top}px`,
+                    "--heal-stream-dx": petal.dx,
+                    "--heal-stream-dy": petal.dy,
+                    "--heal-stream-rot": petal.rotate,
+                    "--heal-stream-scale": String(petal.scale),
+                    animationDelay: `${petal.delayMs}ms`,
+                  } as CSSProperties}
+                />
+              ))}
+            </>
           )}
 
           <div ref={bossCardRef} className={`relative ${shakeTargetId === "boss" ? "battle-shake" : ""}`}>
@@ -896,11 +1147,72 @@ export function BattleArena({
         </div>
       </Card>
 
-      {battleOver && (
-        <Card className="p-3 border-primary/40">
-          <p className="font-semibold">{boss.currentHealth <= 0 ? t.victory : t.defeat}</p>
-          {showResetButton && <Button className="mt-2" onClick={reset} disabled={saving}>{t.newBattle}</Button>}
-        </Card>
+      {battleResolution && (
+        <div className="fixed inset-0 z-[90] bg-slate-950/72 backdrop-blur-[4px]">
+          <Card className="relative h-full w-full overflow-hidden rounded-none border-0 bg-slate-950 p-0 shadow-none">
+            <div className="relative flex h-full min-h-screen flex-col overflow-hidden bg-gradient-to-br from-amber-100 via-sky-50 to-emerald-100">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.78),_transparent_48%)]" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/48 to-slate-950/10" />
+              <div className="absolute inset-x-0 bottom-0 h-[45vh] bg-gradient-to-t from-black/84 via-slate-950/36 to-transparent" />
+              <Image
+                src={battleResolution.winnerId === "player" ? "/ui/battle-victory-scene.svg" : "/ui/battle-defeat-scene.svg"}
+                alt={battleResolution.winnerId === "player" ? t.victory : t.defeat}
+                fill
+                className="object-cover saturate-[1.08] contrast-[1.04]"
+                sizes="100vw"
+              />
+
+              <div className="relative z-10 flex h-full flex-col justify-between p-4 text-white sm:p-6 lg:p-8">
+                <div className="flex justify-end">
+                  <Button
+                    className="battle-return-button-glow rounded-full border border-white/20 bg-slate-950/42 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-black/30 backdrop-blur-sm hover:bg-slate-950/58 md:text-base"
+                    onClick={handleBattleOutcomeAction}
+                    disabled={saving}
+                  >
+                    {showResetButton ? t.newBattle : t.returnFromBattle}
+                  </Button>
+                </div>
+
+                <div className="flex flex-col gap-4 pb-2 sm:pb-4 lg:max-w-[44rem] lg:gap-5">
+                  <div className="space-y-2 rounded-[32px] border border-white/10 bg-slate-950/70 px-5 py-4 shadow-[0_20px_48px_rgba(0,0,0,0.34)] backdrop-blur-md sm:px-6 sm:py-5">
+                    <p className="text-3xl font-semibold tracking-[0.05em] text-white drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)] sm:text-4xl lg:text-5xl">
+                      {battleResolution.winnerId === "player" ? t.victory : t.defeat}
+                    </p>
+                    <p className="max-w-[38rem] text-base leading-relaxed text-slate-100 sm:text-lg lg:text-xl">
+                      {battleResolution.winnerId === "player" ? t.victoryMessage : t.defeatMessage}
+                    </p>
+                  </div>
+
+                  {battleResolution.winnerId === "boss" && battleResolution.defeatQuote && (
+                    <div className="max-w-[40rem] space-y-2 rounded-[30px] border border-amber-100/14 bg-slate-950/76 px-5 py-4 shadow-[0_18px_40px_rgba(0,0,0,0.35)] backdrop-blur-md sm:px-6 sm:py-5">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-amber-200/92">
+                        {t.catCodexAttribution}
+                      </p>
+                      <p className="text-base italic leading-relaxed text-white sm:text-lg lg:text-xl">
+                        {battleResolution.defeatQuote}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-end justify-between gap-4">
+                    <div className="space-y-1 rounded-[28px] border border-white/10 bg-slate-950/74 px-5 py-4 shadow-[0_16px_34px_rgba(0,0,0,0.3)] backdrop-blur-md sm:px-6 sm:py-5">
+                      {battleResolution.winnerId === "player" ? (
+                        <>
+                          <p className="text-[11px] uppercase tracking-[0.28em] text-emerald-200/90">{t.coinsWon}</p>
+                          <p className="text-3xl font-semibold text-emerald-100 sm:text-4xl lg:text-5xl">+{battleResolution.rewardCoins}</p>
+                        </>
+                      ) : (
+                        <p className="max-w-[24rem] text-base leading-relaxed text-slate-100 sm:text-lg">
+                          {t.battleSavedLoss}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
       )}
 
       <Card className="p-3">

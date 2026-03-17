@@ -60,15 +60,18 @@ function SplashMiniCard({ card }: { card: SplashCard }) {
       <div className="pointer-events-none absolute inset-0 opacity-95" style={{ backgroundImage: visualTheme.frameBackground }} />
       <div className="relative">
         <div className="absolute inset-0" style={{ backgroundImage: visualTheme.artBackground }} />
-        <Image
-          src={imgSrc}
-          alt={card.name}
-          width={236}
-          height={133}
-          className="h-[66px] w-full object-cover"
-          onError={() => setImgSrc("/cards/cat_knight.svg")}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+        <div className="relative h-[78px] overflow-hidden bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.18),_transparent_62%)]">
+          <Image
+            src={imgSrc}
+            alt={card.name}
+            width={236}
+            height={156}
+            className="h-full w-full scale-[1.06] object-contain object-center drop-shadow-[0_8px_16px_rgba(0,0,0,0.26)]"
+            sizes="8rem"
+            onError={() => setImgSrc("/cards/cat_knight.svg")}
+          />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/8 to-transparent" />
         <span className={`absolute right-1.5 top-1.5 rounded-full px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.12em] ${RARITY_BADGE[card.rarity]}`}>
           {card.rarity}
         </span>

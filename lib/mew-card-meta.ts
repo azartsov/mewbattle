@@ -59,7 +59,7 @@ export const CARD_META_RU: Record<string, CardMetaLocalized> = {
   boss_dog: {
     name: "Злой Пёс",
     lore: "Железночелюстной боевой пёс со сожжённых дорог святилищ.",
-    ability: "Берсерк-укус и мощная контратака",
+    ability: "Укус и контратака",
   },
   boss_rat: {
     name: "Злая Крыса",

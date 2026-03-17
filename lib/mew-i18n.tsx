@@ -36,6 +36,7 @@ type MewTranslations = {
   earned: string
   spent: string
   loadingData: string
+  savingGameState: string
   deckSaved: string
   battleSavedWin: string
   battleSavedLoss: string
@@ -43,6 +44,8 @@ type MewTranslations = {
   openBooster: string
   openingBooster: string
   boosterCostWarning: string
+  boosterNotEnoughCoins: string
+  boosterNeedMoreCoins: string
   latestDrop: string
   statsHistory: string
   battleStatsHistory: string
@@ -161,10 +164,16 @@ type MewTranslations = {
   catCodexAttribution: string
   versionHistoryTitle: string
   whatsNew: string
+  expand: string
+  collapse: string
   battleLockedHint: string
   battleEnterHint: string
   enterBattle: string
   enteringBattle: string
+  victoryMessage: string
+  defeatMessage: string
+  coinsWon: string
+  returnFromBattle: string
 }
 
 const translations: Record<MewLanguage, MewTranslations> = {
@@ -200,6 +209,7 @@ const translations: Record<MewLanguage, MewTranslations> = {
     earned: "Earned",
     spent: "Spent",
     loadingData: "Loading Firestore data...",
+    savingGameState: "Saving game state...",
     deckSaved: "Deck saved",
     battleSavedWin: "Battle saved. Victory",
     battleSavedLoss: "Battle saved. Defeat",
@@ -207,6 +217,8 @@ const translations: Record<MewLanguage, MewTranslations> = {
     openBooster: "Open Booster",
     openingBooster: "Opening...",
     boosterCostWarning: "This booster costs",
+    boosterNotEnoughCoins: "Not enough coins for this booster.",
+    boosterNeedMoreCoins: "Need",
     latestDrop: "Latest drop",
     statsHistory: "Stats History",
     battleStatsHistory: "Battle Stats History",
@@ -322,13 +334,19 @@ const translations: Record<MewLanguage, MewTranslations> = {
     deckPotentialReward: "Estimated battle reward",
     bossTurnCountdown: "Boss is choosing target...",
     logout: "Logout",
-    catCodexAttribution: "quote from the Cat Codex-Do",
+    catCodexAttribution: "Cat Codex-Do",
     versionHistoryTitle: "Version History",
     whatsNew: "What's New",
+    expand: "Expand",
+    collapse: "Collapse",
     battleLockedHint: "Battle is in progress: you can leave only after it ends.",
     battleEnterHint: "Press \"Enter battle\" to get a random boss.",
     enterBattle: "Enter battle",
     enteringBattle: "Entering battle",
+    victoryMessage: "The cats chased the boss away and brought home a bright reward.",
+    defeatMessage: "The boss won this duel, but the cats will return stronger.",
+    coinsWon: "Coins won",
+    returnFromBattle: "Return",
   },
   ru: {
     appTitle: "MewBattle",
@@ -362,6 +380,7 @@ const translations: Record<MewLanguage, MewTranslations> = {
     earned: "Заработано",
     spent: "Потрачено",
     loadingData: "Загрузка данных Firestore...",
+    savingGameState: "Сохранение состояния игры...",
     deckSaved: "Колода сохранена",
     battleSavedWin: "Бой сохранен. Победа",
     battleSavedLoss: "Бой сохранен. Поражение",
@@ -369,6 +388,8 @@ const translations: Record<MewLanguage, MewTranslations> = {
     openBooster: "Открыть бустер",
     openingBooster: "Открываем...",
     boosterCostWarning: "Этот бустер стоит",
+    boosterNotEnoughCoins: "Для этого бустера не хватает монет.",
+    boosterNeedMoreCoins: "Не хватает",
     latestDrop: "Последний набор",
     statsHistory: "История статистики",
     battleStatsHistory: "История боевой статистики",
@@ -484,13 +505,19 @@ const translations: Record<MewLanguage, MewTranslations> = {
     deckPotentialReward: "Ожидаемая награда за бой",
     bossTurnCountdown: "Босс выбирает цель...",
     logout: "Выйти",
-    catCodexAttribution: "цитата из Кодекса Кота-До",
+    catCodexAttribution: "Кодекс Кота-До",
     versionHistoryTitle: "История версий",
     whatsNew: "Что нового",
+    expand: "Развернуть",
+    collapse: "Свернуть",
     battleLockedHint: "Бой запущен: выйти можно только после завершения.",
     battleEnterHint: "Нажмите «Вступаем в бой», чтобы получить случайного босса.",
     enterBattle: "Вступаем в бой",
     enteringBattle: "Вступаем в бой",
+    victoryMessage: "Коты прогнали босса и вернулись с заслуженной наградой.",
+    defeatMessage: "В этот раз босс оказался сильнее, но коты еще вернутся.",
+    coinsWon: "Выиграно монет",
+    returnFromBattle: "Вернуться",
   },
 }
 

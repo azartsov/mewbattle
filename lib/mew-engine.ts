@@ -17,19 +17,24 @@ export function getDefenderDodgeChance(defenderCard?: FighterCard): number {
 
 export function getMagicalHealingAmount(damage: number): number {
   if (damage <= 0) return 0
-  return Math.max(4, Math.round(damage * 0.35))
+  return 5 + Math.floor(Math.random() * 11)
 }
 
 export function applyTeamHeal(
   fighters: FighterCard[],
   requestedAmount: number,
+  excludedFighterId?: string,
 ): { fighters: FighterCard[]; heal: { amount: number; targetId: string | null } } {
   if (requestedAmount <= 0) {
     return { fighters, heal: { amount: 0, targetId: null } }
   }
 
   const target = fighters
-    .filter((fighter) => fighter.currentHealth > 0 && fighter.currentHealth < fighter.health)
+    .filter((fighter) => (
+      fighter.id !== excludedFighterId
+      && fighter.currentHealth > 0
+      && fighter.currentHealth < fighter.health
+    ))
     .sort((left, right) => {
       if (left.currentHealth !== right.currentHealth) return left.currentHealth - right.currentHealth
       return left.health - right.health

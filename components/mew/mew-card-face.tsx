@@ -12,6 +12,7 @@ import { CARD_META_RU, CARD_META_JA } from "@/lib/mew-card-meta"
 import { getCardSellPrice } from "@/lib/mew-firestore"
 import { getCardVisualTheme } from "@/lib/mew-card-visuals"
 import { CoinPawBadge } from "@/components/mew/coin-paw-badge"
+import { CARD_RARITY_BADGE_CLASS, CARD_STAT_BADGE_CLASS } from "@/lib/mew-card-badge-styles"
 
 interface MewCardFaceProps {
   card: MewCard
@@ -27,22 +28,22 @@ const RARITY_THEME: Record<MewCard["rarity"], {
 }> = {
   common: {
     ring: "border-zinc-700/80",
-    badge: "bg-zinc-700/70 text-zinc-100",
+    badge: CARD_RARITY_BADGE_CLASS.common,
     glow: "from-zinc-400/15 via-transparent to-transparent",
   },
   rare: {
     ring: "border-sky-500/50",
-    badge: "bg-sky-500/25 text-sky-100",
+    badge: CARD_RARITY_BADGE_CLASS.rare,
     glow: "from-sky-400/25 via-transparent to-transparent",
   },
   epic: {
     ring: "border-fuchsia-500/50",
-    badge: "bg-fuchsia-500/25 text-fuchsia-100",
+    badge: CARD_RARITY_BADGE_CLASS.epic,
     glow: "from-fuchsia-400/25 via-transparent to-transparent",
   },
   legendary: {
     ring: "border-amber-500/60",
-    badge: "bg-amber-500/30 text-amber-50",
+    badge: CARD_RARITY_BADGE_CLASS.legendary,
     glow: "from-amber-300/35 via-transparent to-transparent",
   },
 }
@@ -79,15 +80,18 @@ export function MewCardFace({ card, owned, compact = false, className }: MewCard
 
       <div className="relative border-b border-black/20">
         <div className="absolute inset-0" style={{ backgroundImage: visualTheme.artBackground }} />
-        <Image
-          src={imgSrc}
-          alt={card.name}
-          width={320}
-          height={180}
-          className="w-full aspect-[16/9] object-cover"
-          onError={() => setImgSrc(`/cards/${card.id}.svg`)}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+        <div className="relative aspect-[5/4] overflow-hidden bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.2),_transparent_62%)]">
+          <Image
+            src={imgSrc}
+            alt={card.name}
+            width={320}
+            height={256}
+            className="h-full w-full scale-[1.08] object-contain object-center drop-shadow-[0_10px_22px_rgba(0,0,0,0.28)]"
+            sizes="(max-width: 768px) 50vw, 18rem"
+            onError={() => setImgSrc(`/cards/${card.id}.svg`)}
+          />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/48 via-black/6 to-transparent" />
         <span
           className={cn(
             "absolute right-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]",
@@ -125,16 +129,16 @@ export function MewCardFace({ card, owned, compact = false, className }: MewCard
               <div>
                 <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">{t.paramList}</p>
                 <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2.5 items-center text-xs">
-                  <div className="w-fit"><span className="rounded-md bg-rose-500/15 px-2 py-1 font-medium text-rose-200">ATK {card.attack}</span></div>
+                  <div className="w-fit"><span className={CARD_STAT_BADGE_CLASS.attack}>ATK {card.attack}</span></div>
                   <span className="text-foreground/85">{t.paramAttackDesc}</span>
 
-                  <div className="w-fit"><span className="rounded-md bg-emerald-500/15 px-2 py-1 font-medium text-emerald-200">HP {card.health}</span></div>
+                  <div className="w-fit"><span className={CARD_STAT_BADGE_CLASS.health}>HP {card.health}</span></div>
                   <span className="text-foreground/85">{t.paramHealthDesc}</span>
 
                   <div className="w-fit"><span className={cn("inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]", theme.badge)}>{card.rarity}</span></div>
                   <span className="text-foreground/85">{t.paramRarityDesc}</span>
 
-                  <div className="w-fit"><span className="rounded border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 text-sky-200">{displayAbility}</span></div>
+                  <div className="w-fit"><span className={CARD_STAT_BADGE_CLASS.ability}>{displayAbility}</span></div>
                   <span className="text-foreground/85">{t.paramAbilityDesc}</span>
 
                   {affinities.length > 0 ? (
@@ -177,15 +181,15 @@ export function MewCardFace({ card, owned, compact = false, className }: MewCard
             <h4 className={cn("font-semibold leading-tight", compact ? "text-sm" : "text-base")}>{displayName}</h4>
           </div>
           {typeof owned === "number" && (
-            <span className="rounded-md border border-border bg-secondary/60 px-1.5 py-0.5 text-[11px] font-medium text-secondary-foreground">
+            <span className={CARD_STAT_BADGE_CLASS.ownedCompact}>
               x{owned}
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-2 text-[11px] font-medium">
-          <span className="rounded-md bg-rose-500/15 px-2 py-1 text-rose-200">ATK {card.attack}</span>
-          <span className="rounded-md bg-emerald-500/15 px-2 py-1 text-emerald-200">HP {card.health}</span>
+        <div className="flex flex-nowrap items-center gap-1.5 overflow-hidden text-[10px] font-medium">
+          <span className={CARD_STAT_BADGE_CLASS.attackCompact}>ATK {card.attack}</span>
+          <span className={CARD_STAT_BADGE_CLASS.healthCompact}>HP {card.health}</span>
         </div>
 
         <div className="flex min-h-[22px] flex-wrap items-center gap-1.5">
@@ -203,7 +207,11 @@ export function MewCardFace({ card, owned, compact = false, className }: MewCard
           ))}
         </div>
 
-        {!compact && <p className="line-clamp-2 text-xs text-muted-foreground">{displayAbility}</p>}
+        <div className="min-h-[22px]">
+          <span className={cn(CARD_STAT_BADGE_CLASS.abilityCompact, compact ? "text-[9px] px-1.5 py-0.5" : "") }>
+            <span className="truncate">{displayAbility}</span>
+          </span>
+        </div>
       </div>
     </article>
   )

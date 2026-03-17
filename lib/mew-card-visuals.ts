@@ -7,6 +7,28 @@ export type CardVisualTheme = {
   sealShapeClass?: string
 }
 
+function softenLayer(background: string, overlay: string) {
+  return [overlay, background].join(", ")
+}
+
+function softenTheme(theme: CardVisualTheme): CardVisualTheme {
+  return {
+    ...theme,
+    frameBackground: softenLayer(
+      theme.frameBackground,
+      "linear-gradient(160deg, rgba(255, 251, 245, 0.16), rgba(255, 244, 232, 0.08) 46%, rgba(255, 255, 255, 0.04) 100%)",
+    ),
+    artBackground: softenLayer(
+      theme.artBackground,
+      "linear-gradient(180deg, rgba(255, 249, 240, 0.12), rgba(255, 255, 255, 0.02) 62%, rgba(255, 244, 232, 0.08) 100%)",
+    ),
+    bodyBackground: softenLayer(
+      theme.bodyBackground,
+      "linear-gradient(180deg, rgba(255, 252, 247, 0.26), rgba(255, 247, 239, 0.12) 58%, rgba(255, 255, 255, 0.04) 100%)",
+    ),
+  }
+}
+
 const DEFAULT_THEME: CardVisualTheme = {
   frameBackground: [
     "linear-gradient(155deg, rgba(18, 18, 28, 0.96), rgba(44, 24, 36, 0.92) 52%, rgba(83, 43, 36, 0.9) 100%)",
@@ -311,5 +333,5 @@ const CARD_VISUALS: Record<string, CardVisualTheme> = {
 }
 
 export function getCardVisualTheme(cardId: string): CardVisualTheme {
-  return CARD_VISUALS[cardId] ?? DEFAULT_THEME
+  return softenTheme(CARD_VISUALS[cardId] ?? DEFAULT_THEME)
 }

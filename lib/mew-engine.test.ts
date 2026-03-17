@@ -1,6 +1,10 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { applyTeamHeal, calculateTurn, getDefenderDodgeChance, getMagicalHealingAmount } from "./mew-engine"
 import type { FighterCard } from "./mew-types"
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 const attacker: FighterCard = {
   id: "atk",
@@ -82,9 +86,11 @@ describe("calculateTurn", () => {
   })
 
   it("computes magical healing from dealt damage", () => {
+    vi.spyOn(Math, "random").mockReturnValueOnce(0).mockReturnValueOnce(0.999)
+
     expect(getMagicalHealingAmount(0)).toBe(0)
-    expect(getMagicalHealingAmount(10)).toBe(4)
-    expect(getMagicalHealingAmount(20)).toBe(7)
+    expect(getMagicalHealingAmount(10)).toBe(5)
+    expect(getMagicalHealingAmount(20)).toBe(15)
   })
 
   it("heals the weakest damaged ally only", () => {
@@ -94,9 +100,23 @@ describe("calculateTurn", () => {
       { ...defender, id: "cat_mage__2", currentHealth: 15, health: 38, ability: "Magic shield" },
     ]
 
-    const result = applyTeamHeal(team, 6)
+    const result = applyTeamHeal(team, 6, "cat_healer__0")
 
     expect(result.heal).toEqual({ amount: 6, targetId: "cat_ninja__1" })
     expect(result.fighters.find((fighter) => fighter.id === "cat_ninja__1")?.currentHealth).toBe(15)
+  })
+
+  it("does not let the healer heal itself", () => {
+    const team: FighterCard[] = [
+      { ...attacker, id: "cat_healer__0", currentHealth: 20, health: 44, ability: "Magical healing" },
+      { ...defender, id: "cat_ninja__1", currentHealth: 14, health: 40, ability: "30% dodge" },
+      { ...defender, id: "cat_mage__2", currentHealth: 38, health: 38, ability: "Magic shield" },
+    ]
+
+    const result = applyTeamHeal(team, 8, "cat_healer__0")
+
+    expect(result.heal).toEqual({ amount: 8, targetId: "cat_ninja__1" })
+    expect(result.fighters.find((fighter) => fighter.id === "cat_healer__0")?.currentHealth).toBe(20)
+    expect(result.fighters.find((fighter) => fighter.id === "cat_ninja__1")?.currentHealth).toBe(22)
   })
 })

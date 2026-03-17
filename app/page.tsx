@@ -169,6 +169,7 @@ export default function MewBattlePage() {
   const [showUnsavedDeckDialog, setShowUnsavedDeckDialog] = useState(false)
   const [pendingTabSwitch, setPendingTabSwitch] = useState<TabKey | null>(null)
   const [savingUnsavedDeck, setSavingUnsavedDeck] = useState(false)
+  const [savingGameState, setSavingGameState] = useState(false)
 
   const userId = user?.uid ?? null
 
@@ -231,8 +232,12 @@ export default function MewBattlePage() {
   )
 
   const battleLocked = battleStage === "preparing" || battleStage === "fighting"
+  const waitingForBattleDeckChoice = battleStage === "preparing" && !battleDeckSlot
+  const canEnterBattle = !battleLocked && !enteringBattle && !startingBattle
   const globalLoaderLabel = resetting
     ? t.resetToInitial
+    : savingGameState
+      ? t.savingGameState
     : savingUnsavedDeck
       ? t.savingDeck
       : loadingData
@@ -320,14 +325,20 @@ export default function MewBattlePage() {
         `${t.openBooster}: -${offer?.cost ?? 0} · выпало ${result.cards.length} карт${result.unlockedDeckSlot ? " · +слот колоды" : ""}`,
       )
       return result
-    } catch {
-      setMessage("Not enough coins or Firestore permissions are missing")
+    } catch (error) {
+      if (error instanceof Error && error.message === "INSUFFICIENT_COINS") {
+        const offer = BOOSTER_OFFERS.find((candidate) => candidate.id === offerId)
+        const missingCoins = Math.max(0, (offer?.cost ?? 0) - (profile?.coins ?? 0))
+        setMessage(`${t.boosterNotEnoughCoins} ${t.boosterNeedMoreCoins} ${missingCoins} ${t.coins.toLowerCase()}.`)
+      } else {
+        setMessage("Not enough coins or Firestore permissions are missing")
+      }
       return {
         cards: [],
         unlockedDeckSlot: false,
       }
     }
-  }, [cards, loadData, t.openBooster, userId])
+  }, [cards, loadData, profile?.coins, t.boosterNeedMoreCoins, t.boosterNotEnoughCoins, t.coins, t.openBooster, userId])
 
   const battleStatsSummary = useMemo(() => {
     const wins = battleHistory.filter((entry) => entry.winnerId === "player").length
@@ -462,6 +473,11 @@ export default function MewBattlePage() {
     return battleDeckCardsBySlot.get(battleDeckSlot) ?? []
   }, [battleDeckCardsBySlot, battleDeckSlot])
 
+  const canStartBattle = !startingBattle
+    && !enteringBattle
+    && !!battleDeckSlot
+    && (battleDeckCardsBySlot.get(battleDeckSlot)?.length ?? 0) > 0
+
   const scoreCard = useCallback((card: MewCard) => {
     const rarityScore = card.rarity === "legendary" ? 18 : card.rarity === "epic" ? 12 : card.rarity === "rare" ? 7 : 3
     return card.attack + card.health * 0.55 + rarityScore
@@ -514,31 +530,41 @@ export default function MewBattlePage() {
   }, [computeRewardForDeckScore, selectedDeckSlot, deckPowerBySlot])
 
   const saveBattle = useCallback(async (winnerId: string, bossId: string, log: BattleLogEntry[], hpBonus = 0) => {
-    if (!userId) return
+    if (!userId) return 0
 
     const didWin = winnerId === "player"
     const baseReward = didWin ? pendingBattleWinReward : 0
     const totalReward = baseReward + (didWin ? hpBonus : 0)
-    const settled = await awardBattleCoins(userId, didWin, totalReward)
+    setSavingGameState(true)
+    try {
+      const settled = await awardBattleCoins(userId, didWin, totalReward)
 
-    await saveBattleLog({
-      player1Id: userId,
-      bossId,
-      winnerId,
-      rewardCoins: settled,
-      log,
-      createdAt: Date.now(),
-    })
+      await saveBattleLog({
+        player1Id: userId,
+        bossId,
+        winnerId,
+        rewardCoins: settled,
+        log,
+        createdAt: Date.now(),
+      })
 
-    await syncLeaderboardAfterBattle(userId, user?.email ?? undefined)
+      await syncLeaderboardAfterBattle(userId, user?.email ?? undefined)
 
-    await loadData()
-    if (didWin && hpBonus > 0) {
-      setMessage(`${t.battleSavedWin}: +${settled} (${t.battleBase}: ${baseReward} + ${t.battleHpBonus}: +${hpBonus})`)
-    } else {
-      setMessage(`${didWin ? t.battleSavedWin : t.battleSavedLoss}: +${settled}`)
+      if (didWin && hpBonus > 0) {
+        setMessage(`${t.battleSavedWin}: +${settled} (${t.battleBase}: ${baseReward} + ${t.battleHpBonus}: +${hpBonus})`)
+      } else {
+        setMessage(`${didWin ? t.battleSavedWin : t.battleSavedLoss}: +${settled}`)
+      }
+      return settled
+    } catch {
+      setMessage(didWin
+        ? `${t.battleSavedWin}: +${totalReward}`
+        : t.battleSavedLoss)
+      return totalReward
+    } finally {
+      setSavingGameState(false)
     }
-  }, [loadData, pendingBattleWinReward, t.battleBase, t.battleHpBonus, t.battleSavedLoss, t.battleSavedWin, user?.email, userId])
+  }, [pendingBattleWinReward, t.battleBase, t.battleHpBonus, t.battleSavedLoss, t.battleSavedWin, user?.email, userId])
 
   const playerPower = useMemo(() => {
     if (!profile) return 0
@@ -635,6 +661,7 @@ export default function MewBattlePage() {
     setBattleBoss(null)
     setBattleDeckSlot(null)
     setPreviewDeckSlot(null)
+    void loadData(false)
   }
 
   if (loading) {
@@ -907,11 +934,62 @@ export default function MewBattlePage() {
               />
             )}
             {tab === "boosters" && userId && (
-              <BoosterShop onOpen={handleOpenBooster} offers={localizedBoosterOffers} />
+              <BoosterShop
+                onOpen={handleOpenBooster}
+                onInsufficientCoins={(offer: BoosterOffer) => {
+                  const missingCoins = Math.max(0, offer.cost - (profile?.coins ?? 0))
+                  setMessage(`${t.boosterNotEnoughCoins} ${t.boosterNeedMoreCoins} ${missingCoins} ${t.coins.toLowerCase()}.`)
+                }}
+                currentCoins={profile?.coins ?? 0}
+                offers={localizedBoosterOffers}
+              />
             )}
             {tab === "battle" && userId && (
               <div className="space-y-4">
                 <Card className="p-4 space-y-3">
+                  <style>{`
+                    @keyframes battle-deck-choice-glow {
+                      0%, 100% {
+                        box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.18), inset 0 0 0 1px rgba(251, 191, 36, 0.18);
+                        border-color: rgba(251, 191, 36, 0.28);
+                        background: rgba(251, 191, 36, 0.04);
+                      }
+                      50% {
+                        box-shadow: 0 0 0 6px rgba(251, 191, 36, 0.06), 0 0 28px rgba(251, 191, 36, 0.22), inset 0 0 0 1px rgba(253, 224, 71, 0.42);
+                        border-color: rgba(253, 224, 71, 0.55);
+                        background: rgba(251, 191, 36, 0.1);
+                      }
+                    }
+                    @keyframes battle-deck-choice-chip {
+                      0%, 100% {
+                        box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.18);
+                        transform: translateY(0);
+                      }
+                      50% {
+                        box-shadow: 0 0 18px rgba(251, 191, 36, 0.28);
+                        transform: translateY(-1px);
+                      }
+                    }
+                    @keyframes battle-action-button-glow {
+                      0%, 100% {
+                        box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.18), 0 10px 24px rgba(0, 0, 0, 0.12);
+                        filter: saturate(1);
+                      }
+                      50% {
+                        box-shadow: 0 0 0 5px rgba(250, 204, 21, 0.08), 0 0 24px rgba(250, 204, 21, 0.24), 0 14px 30px rgba(0, 0, 0, 0.16);
+                        filter: saturate(1.06);
+                      }
+                    }
+                    .battle-deck-choice-glow {
+                      animation: battle-deck-choice-glow 1.45s ease-in-out infinite;
+                    }
+                    .battle-deck-choice-chip {
+                      animation: battle-deck-choice-chip 1.2s ease-in-out infinite;
+                    }
+                    .battle-action-button-glow {
+                      animation: battle-action-button-glow 1.55s ease-in-out infinite;
+                    }
+                  `}</style>
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <h2 className="text-lg font-semibold">{t.battleArena}</h2>
@@ -921,7 +999,7 @@ export default function MewBattlePage() {
                     </div>
                     <Button
                       size="sm"
-                      className="rounded-full"
+                      className={canEnterBattle ? "battle-action-button-glow rounded-full" : "rounded-full"}
                       onClick={() => void handleEnterBattle()}
                       disabled={battleLocked || enteringBattle || startingBattle}
                     >
@@ -952,17 +1030,18 @@ export default function MewBattlePage() {
 
                       <div className="space-y-2">
                         <p className="text-sm font-medium">{t.chooseBattleDeck}</p>
-                        <div className="space-y-2">
+                        <div className={waitingForBattleDeckChoice ? "battle-deck-choice-glow space-y-2 rounded-2xl border p-3" : "space-y-2"}>
                           {DECK_SLOT_KEYS.map((slotKey) => {
                             const slotDeck = decksBySlot.get(slotKey)
                             const availableCards = battleDeckCardsBySlot.get(slotKey)?.length ?? 0
                             const isSelected = battleDeckSlot === slotKey
+                            const shouldHighlightChoice = waitingForBattleDeckChoice && availableCards > 0 && !isSelected
                             return (
                               <div key={slotKey} className="space-y-1">
                                 <Button
                                   size="sm"
                                   variant={isSelected ? "default" : "outline"}
-                                  className="rounded-full"
+                                  className={shouldHighlightChoice ? "battle-deck-choice-chip rounded-full" : "rounded-full"}
                                   disabled={availableCards === 0}
                                   onClick={() => setBattleDeckSlot((prev) => prev === slotKey ? null : slotKey)}
                                 >
@@ -993,9 +1072,9 @@ export default function MewBattlePage() {
                       <div className="flex justify-end">
                         <Button
                           size="sm"
-                          className="rounded-full"
+                          className={canStartBattle ? "battle-action-button-glow rounded-full" : "rounded-full"}
                           onClick={handleStartBattle}
-                          disabled={startingBattle || enteringBattle || !battleDeckSlot || (battleDeckCardsBySlot.get(battleDeckSlot)?.length ?? 0) === 0}
+                          disabled={!canStartBattle}
                         >
                           {startingBattle ? (
                             <>
@@ -1027,6 +1106,7 @@ export default function MewBattlePage() {
                       deckCards={activeBattleDeckCards}
                       onSaveBattle={saveBattle}
                       deckName={activeBattleDeckName ?? getDefaultDeckName(battleDeckSlot)}
+                      predictedWinRewardBase={pendingBattleWinReward}
                       initialBoss={battleBoss}
                       showResetButton={false}
                       onBattleResolved={handleBattleResolved}

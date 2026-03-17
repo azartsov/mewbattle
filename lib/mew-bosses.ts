@@ -17,15 +17,15 @@ export const BOSS_TYPE_THEME: Record<BossType, {
   badgeClass: string
 }> = {
   raven: {
-    chipClass: "border-violet-400/45 bg-violet-500/15 text-violet-100",
+    chipClass: "border-violet-300/30 bg-[#3f235f] text-[#f4e8ff]",
     badgeClass: "border-violet-400/55 bg-violet-900/55 text-violet-100",
   },
   dog: {
-    chipClass: "border-amber-400/45 bg-amber-500/15 text-amber-100",
+    chipClass: "border-amber-300/30 bg-[#5f3d14] text-[#fff1d6]",
     badgeClass: "border-amber-400/55 bg-amber-900/55 text-amber-100",
   },
   rat: {
-    chipClass: "border-emerald-400/45 bg-emerald-500/15 text-emerald-100",
+    chipClass: "border-emerald-300/30 bg-[#184330] text-[#dcffef]",
     badgeClass: "border-emerald-400/55 bg-emerald-900/55 text-emerald-100",
   },
 }
@@ -51,7 +51,7 @@ export const BOSS_FIGHTERS: FighterCard[] = [
     attack: 15,
     health: 178,
     currentHealth: 178,
-    ability: "Berserk bite and heavy counterattack",
+    ability: "Bite and counterattack",
     lore: "An iron-jawed war dog from the burnt shrine roads.",
     imageUrl: BOSS_TYPE_ICON.dog,
   },

@@ -10,6 +10,7 @@ import { useMewI18n } from "@/lib/mew-i18n"
 import { BOSS_TYPE_ICON, BOSS_TYPE_THEME } from "@/lib/mew-bosses"
 import { CARD_META_RU, CARD_META_JA } from "@/lib/mew-card-meta"
 import { getCardVisualTheme } from "@/lib/mew-card-visuals"
+import { CARD_STAT_BADGE_CLASS } from "@/lib/mew-card-badge-styles"
 
 interface BattleFighterCardProps {
   fighter: FighterCard
@@ -86,15 +87,18 @@ export function BattleFighterCard({
       <div className="pointer-events-none absolute inset-0 opacity-95" style={{ backgroundImage: visualTheme.frameBackground }} />
       <div className="relative">
         <div className="absolute inset-0" style={{ backgroundImage: visualTheme.artBackground }} />
-        <Image
-          src={imgSrc}
-          alt={fighter.name}
-          width={320}
-          height={180}
-          className="h-[78px] w-full object-cover"
-          onError={() => setImgSrc(fallbackSrc)}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent" />
+        <div className="relative h-[92px] overflow-hidden bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.18),_transparent_62%)]">
+          <Image
+            src={imgSrc}
+            alt={fighter.name}
+            width={320}
+            height={208}
+            className="h-full w-full scale-[1.08] object-contain object-center drop-shadow-[0_8px_18px_rgba(0,0,0,0.28)]"
+            sizes="(max-width: 768px) 40vw, 10rem"
+            onError={() => setImgSrc(fallbackSrc)}
+          />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/54 via-black/8 to-transparent" />
         <span className="absolute left-2 top-2 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-slate-100">
           {role === "boss" ? "BOSS" : "ALLY"}
         </span>
@@ -137,13 +141,13 @@ export function BattleFighterCard({
               <div>
                 <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">{t.paramList}</p>
                 <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2.5 items-center text-xs">
-                  <div className="w-fit"><span className="rounded-md bg-rose-500/15 px-2 py-1 font-medium text-rose-200">ATK {fighter.attack}</span></div>
+                  <div className="w-fit"><span className={CARD_STAT_BADGE_CLASS.attack}>ATK {fighter.attack}</span></div>
                   <span className="text-foreground/85">{t.paramAttackDesc}</span>
 
-                  <div className="w-fit"><span className="rounded-md bg-emerald-500/15 px-2 py-1 font-medium text-emerald-200">HP {fighter.currentHealth}/{fighter.health}</span></div>
+                  <div className="w-fit"><span className={CARD_STAT_BADGE_CLASS.health}>HP {fighter.currentHealth}/{fighter.health}</span></div>
                   <span className="text-foreground/85">{t.paramHealthDesc}</span>
 
-                  <div className="w-fit"><span className="rounded border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 text-sky-200">{displayAbility}</span></div>
+                  <div className="w-fit"><span className={CARD_STAT_BADGE_CLASS.ability}>{displayAbility}</span></div>
                   <span className="text-foreground/85">{t.paramAbilityDesc}</span>
 
                   {fighter.bossType && (
@@ -182,9 +186,15 @@ export function BattleFighterCard({
         )}
         <div className="truncate text-xs font-semibold">{displayName}</div>
 
-        <div className="flex items-center gap-1.5 text-[10px] font-medium">
-          <span className="rounded bg-rose-500/15 px-1.5 py-0.5 text-rose-200">ATK {fighter.attack}</span>
-          <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-emerald-200">HP {fighter.currentHealth}</span>
+        <div className="flex flex-nowrap items-center gap-1 overflow-hidden text-[9px] font-medium">
+          <span className={CARD_STAT_BADGE_CLASS.attackCompact}>ATK {fighter.attack}</span>
+          <span className={CARD_STAT_BADGE_CLASS.healthCompact}>HP {fighter.currentHealth}</span>
+        </div>
+
+        <div className="min-h-[20px]">
+          <span className={cn(CARD_STAT_BADGE_CLASS.abilityCompact, "text-[9px] px-1.5 py-0.5")}>
+            <span className="truncate">{displayAbility}</span>
+          </span>
         </div>
 
         {role === "ally" && (

@@ -57,7 +57,7 @@ export function PawLoader({ label, size = "md", overlay = false, className }: Pa
   if (!overlay) return content
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm">
       <div className="rounded-3xl border border-amber-500/25 bg-slate-950/85 px-8 py-7 shadow-[0_20px_80px_rgba(0,0,0,0.45)]">
         {content}
       </div>

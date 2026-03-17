@@ -7,6 +7,7 @@ import type { MewCard } from "@/lib/mew-types"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
 import { BOSS_TYPE_ICON, BOSS_TYPE_THEME } from "@/lib/mew-bosses"
+import { CARD_RARITY_BADGE_CLASS, CARD_STAT_BADGE_CLASS } from "@/lib/mew-card-badge-styles"
 
 const LEGEND_SAMPLE_CARD: MewCard = {
   id: "cat_mage",
@@ -24,10 +25,10 @@ const LEGEND_SAMPLE_CARD: MewCard = {
 }
 
 const RARITY_BADGE: Record<MewCard["rarity"], string> = {
-  common: "bg-zinc-700/70 text-zinc-100",
-  rare: "bg-sky-500/25 text-sky-100",
-  epic: "bg-fuchsia-500/25 text-fuchsia-100",
-  legendary: "bg-amber-500/30 text-amber-50",
+  common: CARD_RARITY_BADGE_CLASS.common,
+  rare: CARD_RARITY_BADGE_CLASS.rare,
+  epic: CARD_RARITY_BADGE_CLASS.epic,
+  legendary: CARD_RARITY_BADGE_CLASS.legendary,
 }
 
 export function HelpPanel() {
@@ -68,13 +69,13 @@ export function HelpPanel() {
         <div className="grid gap-3 md:grid-cols-[190px_1fr] items-start">
           <MewCardFace card={LEGEND_SAMPLE_CARD} owned={1} compact className="max-w-[190px]" />
           <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2.5 items-center text-xs">
-            <div className="w-fit"><span className="rounded-md bg-rose-500/15 px-2 py-1 font-medium text-rose-200">ATK {LEGEND_SAMPLE_CARD.attack}</span></div>
+            <div className="w-fit"><span className={CARD_STAT_BADGE_CLASS.attack}>ATK {LEGEND_SAMPLE_CARD.attack}</span></div>
             <span className="text-foreground/85">{t.paramAttackDesc}</span>
 
-            <div className="w-fit"><span className="rounded-md bg-emerald-500/15 px-2 py-1 font-medium text-emerald-200">HP {LEGEND_SAMPLE_CARD.health}</span></div>
+            <div className="w-fit"><span className={CARD_STAT_BADGE_CLASS.health}>HP {LEGEND_SAMPLE_CARD.health}</span></div>
             <span className="text-foreground/85">{t.paramHealthDesc}</span>
 
-            <div className="w-fit"><span className="rounded-md border border-border bg-secondary/60 px-2 py-1 text-[11px] font-medium text-secondary-foreground">x1</span></div>
+            <div className="w-fit"><span className={CARD_STAT_BADGE_CLASS.owned}>x1</span></div>
             <span className="text-foreground/85">{t.helpStatOwned}</span>
 
             <div className="w-fit">
@@ -84,7 +85,7 @@ export function HelpPanel() {
             </div>
             <span className="text-foreground/85">{t.paramRarityDesc}</span>
 
-            <div className="w-fit"><span className="rounded border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 text-sky-200">{LEGEND_SAMPLE_CARD.ability}</span></div>
+            <div className="w-fit"><span className={CARD_STAT_BADGE_CLASS.ability}>{LEGEND_SAMPLE_CARD.ability}</span></div>
             <span className="text-foreground/85">{t.paramAbilityDesc}</span>
 
             <div className="w-fit flex flex-wrap gap-1">

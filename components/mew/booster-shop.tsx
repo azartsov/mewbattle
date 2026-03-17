@@ -14,91 +14,57 @@ import { cn } from "@/lib/utils"
 
 interface BoosterShopProps {
   offers: BoosterOffer[]
+  currentCoins: number
   onOpen: (offerId: BoosterOffer["id"]) => Promise<BoosterOpenResult>
+  onInsufficientCoins: (offer: BoosterOffer) => void
 }
 
 const RARITY_LABEL: Array<"common" | "rare" | "epic" | "legendary"> = ["common", "rare", "epic", "legendary"]
 
-const CAT_ART_BY_OFFER: Record<BoosterOffer["id"], string> = {
-  starter: "/cards/cat_knight.svg",
-  hunter: "/cards/cat_ninja.svg",
-  royal: "/cards/cat_dragon.svg",
-}
-
-const INLAY_DOTS: Array<{ x: number; y: number; r: number; o: number }> = [
-  { x: 22, y: 24, r: 1.7, o: 0.5 },
-  { x: 46, y: 34, r: 1.2, o: 0.45 },
-  { x: 68, y: 18, r: 1.4, o: 0.35 },
-  { x: 84, y: 42, r: 1.1, o: 0.4 },
-  { x: 112, y: 26, r: 1.6, o: 0.42 },
-  { x: 134, y: 36, r: 1.15, o: 0.35 },
-  { x: 158, y: 20, r: 1.3, o: 0.4 },
-  { x: 172, y: 46, r: 1.1, o: 0.28 },
-  { x: 28, y: 88, r: 1.2, o: 0.32 },
-  { x: 56, y: 96, r: 1.5, o: 0.4 },
-  { x: 92, y: 86, r: 1.1, o: 0.32 },
-  { x: 126, y: 96, r: 1.35, o: 0.38 },
-  { x: 162, y: 90, r: 1.2, o: 0.3 },
-]
-
-// Map cost to tier and styling (lacquer box vibe: glossy dark base + metallic inlay/trim)
-const TIER_CONFIG: Record<string, {
-  name: string
-  colors: {
-    lacquer: string
-    lid: string
-    side: string
-    trim: string
-    inlay: string
-    inlayText: string
-  }
+const OFFER_THEMES: Record<BoosterOffer["id"], {
+  art: string
+  sky: string
+  meadow: string
+  frame: string
+  panel: string
+  badge: string
+  text: string
+  cloud: string
 }> = {
-  bronze: {
-    name: "Bronze",
-    colors: {
-      lacquer: "from-neutral-950 via-amber-950/60 to-neutral-950",
-      lid: "from-amber-700/70 via-amber-800/55 to-neutral-950",
-      side: "from-neutral-950 via-amber-950/35 to-black",
-      trim: "border-amber-400/60 shadow-amber-950/60",
-      inlay: "border-amber-300/35",
-      inlayText: "text-amber-200/75",
-    },
+  starter: {
+    art: "/cards/cat_knight.svg",
+    sky: "from-amber-100 via-orange-50 to-rose-100",
+    meadow: "from-emerald-300/90 via-lime-200/85 to-yellow-100/95",
+    frame: "border-orange-200/85 shadow-[0_18px_40px_rgba(124,45,18,0.16)]",
+    panel: "bg-orange-50/78",
+    badge: "bg-orange-500/90 text-orange-50",
+    text: "text-orange-950",
+    cloud: "bg-white/80",
   },
-  silver: {
-    name: "Silver",
-    colors: {
-      lacquer: "from-neutral-950 via-slate-900/55 to-neutral-950",
-      lid: "from-slate-300/25 via-slate-500/25 to-neutral-950",
-      side: "from-neutral-950 via-slate-900/35 to-black",
-      trim: "border-slate-200/45 shadow-slate-950/60",
-      inlay: "border-slate-200/30",
-      inlayText: "text-slate-100/70",
-    },
+  hunter: {
+    art: "/cards/cat_ninja.svg",
+    sky: "from-sky-100 via-cyan-50 to-teal-100",
+    meadow: "from-emerald-300/90 via-teal-200/85 to-cyan-100/95",
+    frame: "border-sky-200/85 shadow-[0_18px_40px_rgba(14,116,144,0.16)]",
+    panel: "bg-sky-50/78",
+    badge: "bg-sky-600/90 text-sky-50",
+    text: "text-sky-950",
+    cloud: "bg-white/78",
   },
-  gold: {
-    name: "Gold",
-    colors: {
-      lacquer: "from-neutral-950 via-yellow-950/55 to-neutral-950",
-      lid: "from-yellow-500/45 via-yellow-600/35 to-neutral-950",
-      side: "from-neutral-950 via-yellow-950/35 to-black",
-      trim: "border-yellow-300/70 shadow-yellow-950/70",
-      inlay: "border-yellow-200/35",
-      inlayText: "text-yellow-200/80",
-    },
+  royal: {
+    art: "/cards/cat_dragon.svg",
+    sky: "from-yellow-100 via-amber-50 to-pink-100",
+    meadow: "from-orange-300/90 via-amber-200/85 to-yellow-100/95",
+    frame: "border-amber-200/85 shadow-[0_18px_40px_rgba(146,64,14,0.16)]",
+    panel: "bg-amber-50/80",
+    badge: "bg-amber-500/90 text-amber-50",
+    text: "text-amber-950",
+    cloud: "bg-white/76",
   },
 }
 
-const getTierForOffer = (offer: BoosterOffer): "bronze" | "silver" | "gold" => {
-  // Map by cost: 80=bronze, ~120=silver, >150=gold
-  if (offer.cost <= 90) return "bronze"
-  if (offer.cost <= 140) return "silver"
-  return "gold"
-}
-
-export function BoosterShop({ offers, onOpen }: BoosterShopProps) {
+export function BoosterShop({ offers, currentCoins, onOpen, onInsufficientCoins }: BoosterShopProps) {
   const { t } = useMewI18n()
-  const [hoveredOfferId, setHoveredOfferId] = useState<BoosterOffer["id"] | null>(null)
-  const [selectedOfferId, setSelectedOfferId] = useState<BoosterOffer["id"] | null>(null)
   const [lastOpenedOfferId, setLastOpenedOfferId] = useState<BoosterOffer["id"] | null>(null)
   const [opening, setOpening] = useState(false)
   const [openingOfferId, setOpeningOfferId] = useState<BoosterOffer["id"] | null>(null)
@@ -114,14 +80,19 @@ export function BoosterShop({ offers, onOpen }: BoosterShopProps) {
     legendary: t.rarityLegendary,
   }
 
-  const open = async (offerId: BoosterOffer["id"]) => {
+  const open = async (offer: BoosterOffer) => {
+    if (currentCoins < offer.cost) {
+      onInsufficientCoins(offer)
+      return
+    }
+
     setOpening(true)
-    setOpeningOfferId(offerId)
+    setOpeningOfferId(offer.id)
     try {
-      const result = await onOpen(offerId)
+      const result = await onOpen(offer.id)
       setCards(result.cards)
       setUnlockedDeckSlot(result.unlockedDeckSlot)
-      setLastOpenedOfferId(offerId)
+      setLastOpenedOfferId(offer.id)
       setShowResultModal(true)
     } finally {
       setOpening(false)
@@ -130,204 +101,107 @@ export function BoosterShop({ offers, onOpen }: BoosterShopProps) {
   }
 
   return (
-    <div
-      className="space-y-4"
-      onClick={() => {
-        setSelectedOfferId(null)
-        setHoveredOfferId(null)
-      }}
-    >
+    <div className="space-y-4">
       {opening ? <PawLoader overlay size="lg" label={t.openingBooster} /> : null}
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-semibold">{t.boosters}</h2>
+        <CoinPawBadge amount={currentCoins} compact />
       </div>
 
       <style>{`
-        @keyframes lacquer-shine {
-          0%, 100% { opacity: 0.22; transform: translateX(-6px) translateY(2px) skewX(-12deg); }
-          50% { opacity: 0.42; transform: translateX(10px) translateY(-2px) skewX(-12deg); }
+        @keyframes booster-card-float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-5px); }
         }
-        @keyframes inlay-glow {
-          0%, 100% { opacity: 0.55; }
-          50% { opacity: 0.85; }
+        @keyframes booster-cloud-drift {
+          0%, 100% { transform: translateX(0px); }
+          50% { transform: translateX(7px); }
         }
-        .lacquer-shine {
-          animation: lacquer-shine 4.8s ease-in-out infinite;
+        .booster-card-float {
+          animation: booster-card-float 5.4s ease-in-out infinite;
         }
-        .inlay-glow {
-          animation: inlay-glow 2.8s ease-in-out infinite;
+        .booster-cloud-drift {
+          animation: booster-cloud-drift 8.2s ease-in-out infinite;
         }
       `}</style>
 
       <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 justify-items-center">
         {offers.map((offer) => {
-          const tier = getTierForOffer(offer)
-          const tierConfig = TIER_CONFIG[tier]
-          const isHovered = hoveredOfferId === offer.id
-          const isActive = isHovered || selectedOfferId === offer.id
+          const theme = OFFER_THEMES[offer.id]
+          const canAfford = currentCoins >= offer.cost
+          const missingCoins = Math.max(0, offer.cost - currentCoins)
           const isOpening = openingOfferId === offer.id
-          const catArt = CAT_ART_BY_OFFER[offer.id]
 
           return (
             <div
               key={offer.id}
-              role="button"
-              tabIndex={opening ? -1 : 0}
-              aria-disabled={opening}
-              onMouseEnter={() => setHoveredOfferId(offer.id)}
-              onMouseLeave={() => setHoveredOfferId(null)}
-              onClick={(e) => {
-                e.stopPropagation()
-                if (opening) return
-                setSelectedOfferId((prev) => (prev === offer.id ? null : offer.id))
-              }}
-              onKeyDown={(event) => {
-                if (opening) return
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault()
-                  setSelectedOfferId((prev) => (prev === offer.id ? null : offer.id))
-                }
-              }}
               className={cn(
-                "relative w-[210px] h-[260px] focus:outline-none group transition-transform duration-300 hover:scale-[1.08] active:scale-[0.98]",
+                "booster-card-float relative w-[224px] overflow-hidden rounded-[30px] border bg-white/80 p-3 backdrop-blur-sm transition-transform duration-300 hover:-translate-y-1",
+                theme.frame,
+                theme.text,
                 opening && "pointer-events-none opacity-80",
               )}
               title={offer.title}
             >
-              {/* 3D Isometric Box Container */}
-              <div className="relative w-full h-full" style={{ perspective: "1000px" }}>
-                {/* Isometric projection */}
-                <div className="absolute inset-0 transition-all duration-300" style={{
-                  transformStyle: "preserve-3d",
-                  transform: isActive ? "rotateX(14deg) rotateY(-18deg) rotateZ(6deg)" : "rotateX(18deg) rotateY(-20deg)",
-                }}>
-
-                  {/* Front face (main box) */}
-                  <div className={cn(
-                    "absolute inset-0 rounded-xl border-2 shadow-2xl",
-                    `bg-gradient-to-br ${tierConfig.colors.lacquer}`,
-                    tierConfig.colors.trim,
-                  )}>
-                    {/* Lacquer depth + vignette */}
-                    <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-black/35 via-transparent to-black/45" />
-
-                    {/* Specular glossy highlight */}
-                    <div className="lacquer-shine pointer-events-none absolute -left-10 -top-8 h-40 w-56 rounded-full bg-white/20 blur-2xl" />
-
-                    {/* Metallic inlay frame */}
-                    <div className={cn(
-                      "inlay-glow pointer-events-none absolute inset-3 rounded-lg border",
-                      tierConfig.colors.inlay,
-                    )} />
-
-                    {/* Sakura + cat art (subtle, not copied from reference) */}
-                    <div className="pointer-events-none absolute inset-0">
-                      <div className="absolute right-3 top-3 opacity-75">
-                        <Image
-                          src="/ui/sakura-bloom.svg"
-                          alt="Sakura"
-                          width={40}
-                          height={40}
-                          className="h-10 w-10 opacity-70"
-                        />
-                      </div>
-                      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[46%] opacity-20">
-                        <Image
-                          src={catArt}
-                          alt="Cat"
-                          width={120}
-                          height={120}
-                          className="h-[120px] w-[120px]"
-                        />
-                      </div>
-                      <svg
-                        className={cn("absolute inset-0 h-full w-full", tierConfig.colors.inlayText)}
-                        viewBox="0 0 200 200"
-                        aria-hidden="true"
-                      >
-                        {INLAY_DOTS.map((d, idx) => (
-                          <circle key={idx} cx={d.x} cy={d.y} r={d.r} fill="currentColor" opacity={d.o} />
-                        ))}
-                      </svg>
-                    </div>
-
-                    {/* Content - Title and cost */}
-                    <div className="relative h-full flex flex-col items-center justify-center p-4 text-center">
-                      <div className="space-y-2">
-                        <h3 className="font-bold text-lg leading-tight text-white drop-shadow-lg">{offer.title}</h3>
-                        <div className="flex justify-center pt-1">
-                          <CoinPawBadge amount={offer.cost} compact />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Top edge (lid) */}
-                  <div className={cn(
-                    "absolute -top-5 left-2 right-2 h-9 rounded-t-xl border-2 border-b-0 shadow-xl",
-                    `bg-gradient-to-r ${tierConfig.colors.lid}`,
-                    tierConfig.colors.trim,
-                    "transition-all duration-300",
-                    isActive && "-top-7"
-                  )}>
-                    <div className="absolute inset-0 rounded-t-xl bg-gradient-to-b from-white/20 via-white/10 to-transparent" />
-                    <div className={cn("pointer-events-none absolute inset-2 rounded-lg border", tierConfig.colors.inlay)} />
-                  </div>
-
-                  {/* Left edge (3D side) */}
-                  <div className={cn(
-                    "absolute top-7 -left-4 w-4 h-36 rounded-l-xl",
-                    `bg-gradient-to-r ${tierConfig.colors.side}`,
-                  )}>
-                    <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent" />
-                  </div>
-
-                  {/* Right edge (3D side) */}
-                  <div className={cn(
-                    "absolute top-7 -right-4 w-4 h-36 rounded-r-xl",
-                    `bg-gradient-to-l ${tierConfig.colors.side}`,
-                  )}>
-                    <div className="absolute inset-0 bg-gradient-to-l from-white/10 to-transparent" />
-                  </div>
+              <div className={cn("relative min-h-[300px] overflow-hidden rounded-[24px] border border-white/60 bg-gradient-to-b", theme.sky)}>
+                <div className="absolute inset-x-0 top-0 h-[58%] overflow-hidden rounded-t-[24px]">
+                  <div className="absolute left-4 top-4 h-12 w-12 rounded-full bg-white/55 blur-sm" />
+                  <div className={cn("booster-cloud-drift absolute left-5 top-8 h-6 w-16 rounded-full blur-[1px]", theme.cloud)} />
+                  <div className={cn("booster-cloud-drift absolute right-6 top-12 h-5 w-14 rounded-full blur-[1px]", theme.cloud)} style={{ animationDelay: "-2.3s" }} />
+                  <div className={cn("absolute inset-x-0 bottom-0 h-24 rounded-t-[60%] bg-gradient-to-t", theme.meadow)} />
+                  <div className="absolute left-6 bottom-6 h-4 w-20 rounded-full bg-emerald-500/20 blur-md" />
+                  <div className="absolute right-8 bottom-8 h-4 w-16 rounded-full bg-emerald-500/15 blur-md" />
+                  <div className="absolute left-1/2 top-[52%] z-10 h-[136px] w-[136px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/35 blur-2xl" />
+                  <Image
+                    src={theme.art}
+                    alt={offer.title}
+                    width={136}
+                    height={136}
+                    className="absolute left-1/2 top-[52%] z-20 h-[136px] w-[136px] -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_12px_18px_rgba(15,23,42,0.18)]"
+                  />
                 </div>
 
-                {/* Hover overlay with info and open button */}
-                <div className={cn(
-                  "absolute inset-0 rounded-xl bg-black/65 backdrop-blur-sm flex flex-col items-center justify-center gap-3 p-4 transition-opacity duration-300",
-                  isActive ? "opacity-100" : "opacity-0 pointer-events-none"
-                )}
-                onClick={() => {
-                  setSelectedOfferId(null)
-                  setHoveredOfferId(null)
-                }}>
-                  <div className="space-y-1.5 text-center text-xs">
-                    <p className="text-foreground/70">{offer.subtitle}</p>
-                    <div className="grid grid-cols-2 gap-1">
+                <div className="relative z-30 flex min-h-[300px] flex-col justify-between p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className={cn("rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em]", theme.badge)}>
+                      {offer.title}
+                    </span>
+                    <CoinPawBadge amount={offer.cost} compact />
+                  </div>
+
+                  <div className={cn("rounded-[22px] border border-white/65 p-4 shadow-sm backdrop-blur-sm", theme.panel)}>
+                    <p className="text-sm font-semibold leading-snug">{offer.subtitle}</p>
+                    <div className="mt-3 grid grid-cols-2 gap-1.5 text-[11px] font-medium">
                       {RARITY_LABEL.map((rarity) => (
-                        <span key={`${offer.id}-${rarity}`} className="text-[10px] text-muted-foreground">
-                          {rarityLabels[rarity]}: {Math.round((offer.rarityWeights[rarity] ?? 0) * 100)}%
+                        <span key={`${offer.id}-${rarity}`} className="rounded-full bg-white/65 px-2 py-1 text-center">
+                          {rarityLabels[rarity]} {Math.round((offer.rarityWeights[rarity] ?? 0) * 100)}%
                         </span>
                       ))}
                     </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    className="w-full mt-2"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      open(offer.id)
-                    }}
-                    disabled={opening || isOpening}
-                  >
-                    {isOpening ? (
-                      <>
-                        <PawLoader size="sm" />
-                      </>
+
+                    {!canAfford ? (
+                      <p className="mt-3 text-xs font-medium text-rose-700">
+                        {t.boosterNotEnoughCoins} {t.boosterNeedMoreCoins} {missingCoins} {t.coins.toLowerCase()}.
+                      </p>
                     ) : (
-                      t.openBooster
+                      <p className="mt-3 text-xs text-foreground/70">
+                        {t.boosterCostWarning} {offer.cost} {t.coins.toLowerCase()}.
+                      </p>
                     )}
-                  </Button>
+
+                    <Button
+                      size="sm"
+                      variant={canAfford ? "default" : "secondary"}
+                      className="mt-4 w-full rounded-full"
+                      onClick={() => {
+                        void open(offer)
+                      }}
+                      disabled={opening || isOpening}
+                    >
+                      {isOpening ? <PawLoader size="sm" /> : t.openBooster}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -335,7 +209,6 @@ export function BoosterShop({ offers, onOpen }: BoosterShopProps) {
         })}
       </div>
 
-      {/* Result modal */}
       <Dialog open={showResultModal} onOpenChange={setShowResultModal}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -358,7 +231,7 @@ export function BoosterShop({ offers, onOpen }: BoosterShopProps) {
                 <p className="mt-2 text-sm font-medium text-emerald-100">Поздравляем! Открылся 4-й слот колоды.</p>
               </div>
             ) : cards.length > 0 ? (
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 justify-items-center">
+              <div className="grid grid-cols-2 gap-3 justify-items-center lg:grid-cols-3">
                 {cards.map((card, idx) => (
                   <MewCardFace
                     key={`${card.id}-${idx}`}
