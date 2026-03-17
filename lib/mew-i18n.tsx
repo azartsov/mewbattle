@@ -68,6 +68,9 @@ type MewTranslations = {
   selling: string
   cannotSell: string
   collectionTitle: string
+  totalCardsValue: string
+  coinsTooltip: string
+  totalCardsValueTooltip: string
   owned: string
   noCardsYet: string
   deckCollectionHint: string
@@ -148,7 +151,7 @@ type MewTranslations = {
   leaderboardEmpty: string
   lbColNickname: string
   lbColScore: string
-  lbColCards: string
+  lbColCoinsCards: string
   lbColDate: string
   lbScoreFormula: string
   leaderboardNewRecord: string
@@ -158,6 +161,8 @@ type MewTranslations = {
   rewardInverseTip: string
   battleHpBonus: string
   battleBase: string
+  battleCost: string
+  battleRewardFormula: string
   battleHpBonusDetail: string
   paramSellPriceDesc: string
   helpEconomyTitle: string
@@ -265,6 +270,9 @@ const translations: Record<MewLanguage, MewTranslations> = {
     selling: "Selling...",
     cannotSell: "Keep at least one copy of each card.",
     collectionTitle: "My Cats",
+    totalCardsValue: "Card value",
+    coinsTooltip: "Number of coins",
+    totalCardsValueTooltip: "Total value of all player cards",
     owned: "Owned",
     noCardsYet: "Open boosters to get cards.",
     deckCollectionHint: "Collection: drag cards or tap to select",
@@ -345,7 +353,7 @@ const translations: Record<MewLanguage, MewTranslations> = {
     leaderboardEmpty: "No players on the leaderboard yet.",
     lbColNickname: "Player",
     lbColScore: "Total",
-    lbColCards: "Cards",
+    lbColCoinsCards: "Coins+cards",
     lbColDate: "Date",
     lbScoreFormula: "Score = coins + total card value",
     leaderboardNewRecord: "New leaderboard result",
@@ -354,7 +362,9 @@ const translations: Record<MewLanguage, MewTranslations> = {
     leaderboardTotalScore: "Total result",
     rewardInverseTip: "Weaker deck -> higher reward (inversely proportional to deck strength)",
     battleHpBonus: "HP Bonus",
-    battleBase: "Base",
+    battleBase: "Deck reward",
+    battleCost: "Battle fee",
+    battleRewardFormula: "Reward: Deck reward + Remaining health - Battle fee",
     battleHpBonusDetail: "Remaining HP in your surviving cats is added to battle reward",
     paramSellPriceDesc: "Sell price for one duplicate (keep at least one copy)",
     helpEconomyTitle: "Economy",
@@ -460,6 +470,9 @@ const translations: Record<MewLanguage, MewTranslations> = {
     selling: "Продажа...",
     cannotSell: "Нужно оставить минимум одну копию карты.",
     collectionTitle: "Мои коты",
+    totalCardsValue: "Стоимость карт",
+    coinsTooltip: "Количество монет",
+    totalCardsValueTooltip: "Стоимость всех карт игрока",
     owned: "Есть",
     noCardsYet: "Откройте бустеры, чтобы получить карты.",
     deckCollectionHint: "Коллекция: перетаскивайте карты или выбирайте тапом",
@@ -540,7 +553,7 @@ const translations: Record<MewLanguage, MewTranslations> = {
     leaderboardEmpty: "В таблице пока нет игроков.",
     lbColNickname: "Игрок",
     lbColScore: "Итог",
-    lbColCards: "Карты",
+    lbColCoinsCards: "Монеты+карты",
     lbColDate: "Дата",
     lbScoreFormula: "Итог = монеты + суммарная стоимость всех карт",
     leaderboardNewRecord: "Новый рекорд в таблице",
@@ -549,7 +562,9 @@ const translations: Record<MewLanguage, MewTranslations> = {
     leaderboardTotalScore: "Итоговый результат",
     rewardInverseTip: "Слабее колода -> выше награда (обратно пропорционально силе)",
     battleHpBonus: "Бонус ОЗ",
-    battleBase: "База",
+    battleBase: "За колоду",
+    battleCost: "Оплата боя",
+    battleRewardFormula: "Награда: За колоду + За оставшееся здоровье - Оплата боя",
     battleHpBonusDetail: "Суммарное оставшееся здоровье живых котов добавляется к награде за бой",
     paramSellPriceDesc: "Цена продажи одного дубликата (минимум одна копия остаётся)",
     helpEconomyTitle: "Экономика",
