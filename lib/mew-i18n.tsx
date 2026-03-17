@@ -170,6 +170,9 @@ type MewTranslations = {
   battleEnterHint: string
   enterBattle: string
   enteringBattle: string
+  cardDesign: string
+  cardDesignClassic: string
+  cardDesignStorybook: string
   victoryMessage: string
   defeatMessage: string
   coinsWon: string
@@ -343,6 +346,9 @@ const translations: Record<MewLanguage, MewTranslations> = {
     battleEnterHint: "Press \"Enter battle\" to get a random boss.",
     enterBattle: "Enter battle",
     enteringBattle: "Entering battle",
+    cardDesign: "Card design",
+    cardDesignClassic: "Classic",
+    cardDesignStorybook: "Soft anime",
     victoryMessage: "The cats chased the boss away and brought home a bright reward.",
     defeatMessage: "The boss won this duel, but the cats will return stronger.",
     coinsWon: "Coins won",
@@ -514,6 +520,9 @@ const translations: Record<MewLanguage, MewTranslations> = {
     battleEnterHint: "Нажмите «Вступаем в бой», чтобы получить случайного босса.",
     enterBattle: "Вступаем в бой",
     enteringBattle: "Вступаем в бой",
+    cardDesign: "Дизайн карточек",
+    cardDesignClassic: "Классический",
+    cardDesignStorybook: "Мягкий аниме",
     victoryMessage: "Коты прогнали босса и вернулись с заслуженной наградой.",
     defeatMessage: "В этот раз босс оказался сильнее, но коты еще вернутся.",
     coinsWon: "Выиграно монет",

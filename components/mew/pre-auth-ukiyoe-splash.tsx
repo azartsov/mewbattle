@@ -7,6 +7,9 @@ import { LanguageToggle } from "@/components/mew/language-toggle"
 import { useMewI18n } from "@/lib/mew-i18n"
 import { pickCatCodexQuote, pickCatCodexQuoteRandom } from "@/lib/cat-codex"
 import { getCardVisualTheme } from "@/lib/mew-card-visuals"
+import { getCardRarityTheme, getCardStatBadgeClass } from "@/lib/mew-card-badge-styles"
+import { useCardDesign } from "@/lib/mew-card-design"
+import { cn } from "@/lib/utils"
 
 interface PreAuthUkiyoeSplashProps {
   onEnter: () => void
@@ -33,30 +36,18 @@ const SPLASH_CAT_CARDS: SplashCard[] = [
   { id: "cat_dragon",    name: "Cat Dragon",    attack: 24, health: 58, rarity: "legendary", imageUrl: "/cards/cat_dragon.svg",    rot:  18, tx:  248, ty: 14 },
 ]
 
-const RARITY_BORDER: Record<SplashCard["rarity"], string> = {
-  common:    "border-zinc-500/70",
-  rare:      "border-sky-500/65",
-  epic:      "border-fuchsia-500/65",
-  legendary: "border-amber-400/80",
-}
-const RARITY_GLOW: Record<SplashCard["rarity"], string> = {
-  common:    "",
-  rare:      "shadow-[0_0_14px_rgba(56,189,248,0.28)]",
-  epic:      "shadow-[0_0_16px_rgba(217,70,239,0.3)]",
-  legendary: "shadow-[0_0_20px_rgba(251,191,36,0.42)]",
-}
-const RARITY_BADGE: Record<SplashCard["rarity"], string> = {
-  common:    "bg-zinc-700/80 text-zinc-100",
-  rare:      "bg-sky-500/25 text-sky-100",
-  epic:      "bg-fuchsia-500/25 text-fuchsia-100",
-  legendary: "bg-amber-500/30 text-amber-50",
-}
-
 function SplashMiniCard({ card }: { card: SplashCard }) {
+  const { variant } = useCardDesign()
   const [imgSrc, setImgSrc] = useState(card.imageUrl)
-  const visualTheme = getCardVisualTheme(card.id)
+  const visualTheme = getCardVisualTheme(card.id, variant)
+  const theme = getCardRarityTheme(card.rarity, variant)
+  const badgeStyles = getCardStatBadgeClass(variant)
   return (
-    <div className={`relative w-[118px] overflow-hidden rounded-xl border-[1.5px] bg-[#10091e] shadow-2xl shadow-black/60 ${RARITY_BORDER[card.rarity]} ${RARITY_GLOW[card.rarity]}`}>
+    <div className={cn(
+      "relative w-[118px] overflow-hidden rounded-xl border-[1.5px] shadow-2xl",
+      variant === "storybook" ? "bg-[#fffaf2]/94 shadow-[0_12px_28px_rgba(110,89,62,0.22)]" : "bg-[#10091e] shadow-black/60",
+      theme.ring,
+    )}>
       <div className="pointer-events-none absolute inset-0 opacity-95" style={{ backgroundImage: visualTheme.frameBackground }} />
       <div className="relative">
         <div className="absolute inset-0" style={{ backgroundImage: visualTheme.artBackground }} />
@@ -66,21 +57,30 @@ function SplashMiniCard({ card }: { card: SplashCard }) {
             alt={card.name}
             width={236}
             height={156}
-            className="h-full w-full scale-[1.06] object-contain object-center drop-shadow-[0_8px_16px_rgba(0,0,0,0.26)]"
+            className={cn(
+              "h-full w-full scale-[1.06] object-contain object-center drop-shadow-[0_8px_16px_rgba(0,0,0,0.26)]",
+              variant === "storybook" && "brightness-[1.04] contrast-[0.84] saturate-[0.8] sepia-[0.14]",
+            )}
             sizes="8rem"
             onError={() => setImgSrc("/cards/cat_knight.svg")}
           />
+          {variant === "storybook" && (
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_28%_22%,_rgba(255,249,240,0.34),_transparent_34%),linear-gradient(180deg,rgba(255,245,233,0.1),rgba(243,226,205,0.24))]" />
+          )}
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/8 to-transparent" />
-        <span className={`absolute right-1.5 top-1.5 rounded-full px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.12em] ${RARITY_BADGE[card.rarity]}`}>
+        <span className={cn("absolute right-1.5 top-1.5 rounded-full px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.12em]", theme.badge)}>
           {card.rarity}
         </span>
       </div>
       <div className="relative p-1.5" style={{ backgroundImage: visualTheme.bodyBackground }}>
-        <p className="truncate text-[10px] font-semibold leading-tight text-slate-100">{card.name}</p>
+        <p className={cn(
+          "truncate text-[10px] font-semibold leading-tight",
+          variant === "storybook" ? "text-[#443429] drop-shadow-[0_1px_0_rgba(255,255,255,0.38)]" : "text-slate-100",
+        )}>{card.name}</p>
         <div className="mt-1 flex items-center gap-1 text-[9px] font-medium">
-          <span className="rounded bg-rose-500/20 px-1 py-0.5 text-rose-200">ATK {card.attack}</span>
-          <span className="rounded bg-emerald-500/20 px-1 py-0.5 text-emerald-200">HP {card.health}</span>
+          <span className={cn(badgeStyles.attackCompact, "px-1 py-0.5 text-[9px]")}>ATK {card.attack}</span>
+          <span className={cn(badgeStyles.healthCompact, "px-1 py-0.5 text-[9px]")}>HP {card.health}</span>
         </div>
       </div>
     </div>

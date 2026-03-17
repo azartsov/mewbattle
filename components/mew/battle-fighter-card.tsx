@@ -7,10 +7,11 @@ import { cn } from "@/lib/utils"
 import type { FighterCard } from "@/lib/mew-types"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { useMewI18n } from "@/lib/mew-i18n"
-import { BOSS_TYPE_ICON, BOSS_TYPE_THEME } from "@/lib/mew-bosses"
-import { CARD_META_RU, CARD_META_JA } from "@/lib/mew-card-meta"
-import { getCardVisualTheme } from "@/lib/mew-card-visuals"
-import { CARD_STAT_BADGE_CLASS } from "@/lib/mew-card-badge-styles"
+import { BOSS_TYPE_ICON, getBossAffinityChipLabel, getBossTypeTheme } from "@/lib/mew-bosses"
+import { CARD_META_RU, CARD_META_JA, getCardAbilityBadgeLabel } from "@/lib/mew-card-meta"
+import { getCardMonogramClass, getCardVisualTheme } from "@/lib/mew-card-visuals"
+import { getCardStatBadgeClass } from "@/lib/mew-card-badge-styles"
+import { useCardDesign } from "@/lib/mew-card-design"
 
 interface BattleFighterCardProps {
   fighter: FighterCard
@@ -40,15 +41,20 @@ export function BattleFighterCard({
   className,
 }: BattleFighterCardProps) {
   const { t, language } = useMewI18n()
+  const { variant } = useCardDesign()
+  const badgeStyles = getCardStatBadgeClass(variant)
+  const bossTypeTheme = getBossTypeTheme(variant)
   const hpPct = Math.max(0, Math.min(100, Math.round((fighter.currentHealth / fighter.health) * 100)))
   const baseId = fighter.id.split("__")[0]
   const metaRu = language === "ru" ? (CARD_META_RU[baseId] ?? null) : null
   const displayName = metaRu?.name ?? fighter.name
   const displayLore = metaRu?.lore ?? fighter.lore ?? fighter.ability
   const displayAbility = metaRu?.ability ?? fighter.ability
+  const badgeAbility = getCardAbilityBadgeLabel(baseId, language, displayAbility)
   const fallbackSrc = role === "boss" ? "/bosses/evil_raven.svg" : "/cards/cat_knight.svg"
   const [imgSrc, setImgSrc] = useState(fighter.imageUrl || fallbackSrc)
-  const visualTheme = getCardVisualTheme(baseId)
+  const visualTheme = getCardVisualTheme(baseId, variant)
+  const monogramClass = getCardMonogramClass(baseId, variant)
 
   const bossTypeLabel = (bossType: "raven" | "dog" | "rat") => {
     if (bossType === "raven") return t.bossRaven
@@ -73,8 +79,10 @@ export function BattleFighterCard({
         if (!isDead) onTap?.()
       }}
       className={cn(
-        "relative w-[140px] sm:w-[152px] overflow-hidden rounded-xl border bg-card/95",
-        "shadow-[0_8px_22px_rgba(2,6,23,0.35)] transition-all",
+        "relative w-[140px] sm:w-[152px] overflow-hidden rounded-xl border transition-all",
+        variant === "storybook"
+          ? "bg-[#fffaf2]/92 shadow-[0_12px_24px_rgba(110,89,62,0.18)]"
+          : "bg-card/95 shadow-[0_8px_22px_rgba(2,6,23,0.35)]",
         isDead ? "opacity-45 grayscale" : "hover:-translate-y-0.5",
         role === "boss" ? "border-rose-500/50" : "border-sky-500/35",
         draggable && !isDead && "cursor-grab active:cursor-grabbing",
@@ -93,10 +101,16 @@ export function BattleFighterCard({
             alt={fighter.name}
             width={320}
             height={208}
-            className="h-full w-full scale-[1.08] object-contain object-center drop-shadow-[0_8px_18px_rgba(0,0,0,0.28)]"
+            className={cn(
+              "h-full w-full scale-[1.08] object-contain object-center drop-shadow-[0_8px_18px_rgba(0,0,0,0.28)]",
+              variant === "storybook" && "brightness-[1.04] contrast-[0.84] saturate-[0.8] sepia-[0.14]",
+            )}
             sizes="(max-width: 768px) 40vw, 10rem"
             onError={() => setImgSrc(fallbackSrc)}
           />
+          {variant === "storybook" && (
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_28%_22%,_rgba(255,249,240,0.32),_transparent_34%),linear-gradient(180deg,rgba(255,245,233,0.1),rgba(243,226,205,0.24))]" />
+          )}
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/54 via-black/8 to-transparent" />
         <span className="absolute left-2 top-2 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-slate-100">
@@ -106,7 +120,7 @@ export function BattleFighterCard({
           <span
             className={cn(
               "absolute left-2 bottom-2 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold",
-              BOSS_TYPE_THEME[fighter.bossType].badgeClass,
+              bossTypeTheme[fighter.bossType].badgeClass,
             )}
           >
             {bossTypeLabel(fighter.bossType)}
@@ -141,13 +155,13 @@ export function BattleFighterCard({
               <div>
                 <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">{t.paramList}</p>
                 <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2.5 items-center text-xs">
-                  <div className="w-fit"><span className={CARD_STAT_BADGE_CLASS.attack}>ATK {fighter.attack}</span></div>
+                  <div className="w-fit"><span className={badgeStyles.attack}>ATK {fighter.attack}</span></div>
                   <span className="text-foreground/85">{t.paramAttackDesc}</span>
 
-                  <div className="w-fit"><span className={CARD_STAT_BADGE_CLASS.health}>HP {fighter.currentHealth}/{fighter.health}</span></div>
+                  <div className="w-fit"><span className={badgeStyles.health}>HP {fighter.currentHealth}/{fighter.health}</span></div>
                   <span className="text-foreground/85">{t.paramHealthDesc}</span>
 
-                  <div className="w-fit"><span className={CARD_STAT_BADGE_CLASS.ability}>{displayAbility}</span></div>
+                  <div className="w-fit"><span className={badgeStyles.ability}>{displayAbility}</span></div>
                   <span className="text-foreground/85">{t.paramAbilityDesc}</span>
 
                   {fighter.bossType && (
@@ -163,7 +177,7 @@ export function BattleFighterCard({
                         {fighter.bossAffinities.map((affinity) => (
                           <span
                             key={`${fighter.id}-${affinity.bossType}`}
-                            className={cn("inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px]", BOSS_TYPE_THEME[affinity.bossType].chipClass)}
+                            className={cn("inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px]", bossTypeTheme[affinity.bossType].chipClass)}
                           >
                             <Image src={BOSS_TYPE_ICON[affinity.bossType]} alt={bossTypeLabel(affinity.bossType)} width={12} height={12} className="rounded-sm" />
                             {bossTypeLabel(affinity.bossType)} Lv{affinity.level}
@@ -182,18 +196,21 @@ export function BattleFighterCard({
 
       <div className="relative space-y-1.5 p-2" style={{ backgroundImage: visualTheme.bodyBackground }}>
         {CARD_META_JA[baseId] && (
-          <p className="text-[8px] font-light tracking-[0.15em] text-muted-foreground/50 leading-none mb-0.5">{CARD_META_JA[baseId]}</p>
+          <p className={cn("text-[8px] font-light tracking-[0.15em] leading-none mb-0.5", monogramClass)}>{CARD_META_JA[baseId]}</p>
         )}
-        <div className="truncate text-xs font-semibold">{displayName}</div>
+        <div className={cn(
+          "truncate text-xs font-semibold",
+          variant === "storybook" ? "text-[#443429] drop-shadow-[0_1px_0_rgba(255,255,255,0.38)]" : "text-foreground",
+        )}>{displayName}</div>
 
         <div className="flex flex-nowrap items-center gap-1 overflow-hidden text-[9px] font-medium">
-          <span className={CARD_STAT_BADGE_CLASS.attackCompact}>ATK {fighter.attack}</span>
-          <span className={CARD_STAT_BADGE_CLASS.healthCompact}>HP {fighter.currentHealth}</span>
+          <span className={badgeStyles.attackCompact}>ATK {fighter.attack}</span>
+          <span className={badgeStyles.healthCompact}>HP {fighter.currentHealth}</span>
         </div>
 
         <div className="min-h-[20px]">
-          <span className={cn(CARD_STAT_BADGE_CLASS.abilityCompact, "text-[9px] px-1.5 py-0.5")}>
-            <span className="truncate">{displayAbility}</span>
+          <span className={cn(badgeStyles.abilityCompact, "text-[9px] px-1.5 py-0.5")}>
+            <span className="truncate">{badgeAbility}</span>
           </span>
         </div>
 
@@ -203,10 +220,9 @@ export function BattleFighterCard({
               fighter.bossAffinities.map((affinity) => (
                 <span
                   key={`${fighter.id}-${affinity.bossType}`}
-                  className={cn("inline-flex items-center gap-0.5 rounded border px-1 py-0.5 text-[9px]", BOSS_TYPE_THEME[affinity.bossType].chipClass)}
+                  className={cn("inline-flex items-center rounded border px-1 py-0.5 text-[9px] font-semibold tracking-[0.08em]", bossTypeTheme[affinity.bossType].chipClass)}
                 >
-                  <Image src={BOSS_TYPE_ICON[affinity.bossType]} alt={bossTypeLabel(affinity.bossType)} width={10} height={10} className="rounded-sm" />
-                  Lv{affinity.level}
+                  {getBossAffinityChipLabel(affinity.bossType, language)}Lv{affinity.level}
                 </span>
               ))
             ) : (

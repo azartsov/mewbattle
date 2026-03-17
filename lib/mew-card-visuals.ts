@@ -1,3 +1,5 @@
+import type { CardDesignVariant } from "@/lib/mew-card-design"
+
 export type CardVisualTheme = {
   frameBackground: string
   artBackground: string
@@ -5,6 +7,21 @@ export type CardVisualTheme = {
   sealBackground: string
   sealClass: string
   sealShapeClass?: string
+}
+
+const CARD_MONOGRAM_CLASS: Record<string, string> = {
+  cat_knight: "text-white/95 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]",
+  cat_healer: "text-slate-950/90 drop-shadow-[0_1px_1px_rgba(255,255,255,0.35)]",
+  cat_alchemist: "text-slate-950/90 drop-shadow-[0_1px_1px_rgba(255,255,255,0.3)]",
+  cat_phantom: "text-white/95 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]",
+  cat_ninja: "text-white/95 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]",
+  cat_mage: "text-white/95 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]",
+  cat_berserker: "text-white/95 drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]",
+  cat_vampire: "text-white/95 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]",
+  cat_dragon: "text-slate-950/90 drop-shadow-[0_1px_1px_rgba(255,255,255,0.28)]",
+  boss_raven: "text-white/95 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]",
+  boss_dog: "text-slate-950/90 drop-shadow-[0_1px_1px_rgba(255,255,255,0.28)]",
+  boss_rat: "text-slate-950/90 drop-shadow-[0_1px_1px_rgba(255,255,255,0.28)]",
 }
 
 function softenLayer(background: string, overlay: string) {
@@ -26,6 +43,26 @@ function softenTheme(theme: CardVisualTheme): CardVisualTheme {
       theme.bodyBackground,
       "linear-gradient(180deg, rgba(255, 252, 247, 0.26), rgba(255, 247, 239, 0.12) 58%, rgba(255, 255, 255, 0.04) 100%)",
     ),
+  }
+}
+
+function storybookTheme(theme: CardVisualTheme): CardVisualTheme {
+  const softened = softenTheme(theme)
+  return {
+    ...softened,
+    frameBackground: softenLayer(
+      softened.frameBackground,
+      "linear-gradient(160deg, rgba(255, 246, 232, 0.32), rgba(255, 241, 223, 0.18) 46%, rgba(244, 248, 255, 0.12) 100%)",
+    ),
+    artBackground: softenLayer(
+      softened.artBackground,
+      "linear-gradient(180deg, rgba(255, 250, 242, 0.24), rgba(255, 255, 255, 0.08) 58%, rgba(236, 244, 252, 0.16) 100%)",
+    ),
+    bodyBackground: [
+      "linear-gradient(180deg, rgba(255, 251, 243, 0.9), rgba(249, 244, 235, 0.82) 62%, rgba(240, 245, 250, 0.78) 100%)",
+      "repeating-linear-gradient(135deg, rgba(255,255,255,0.14) 0 2px, transparent 2px 14px)",
+      softened.bodyBackground,
+    ].join(", "),
   }
 }
 
@@ -332,6 +369,14 @@ const CARD_VISUALS: Record<string, CardVisualTheme> = {
   },
 }
 
-export function getCardVisualTheme(cardId: string): CardVisualTheme {
-  return softenTheme(CARD_VISUALS[cardId] ?? DEFAULT_THEME)
+export function getCardVisualTheme(cardId: string, variant: CardDesignVariant = "classic"): CardVisualTheme {
+  const baseTheme = CARD_VISUALS[cardId] ?? DEFAULT_THEME
+  return variant === "storybook" ? storybookTheme(baseTheme) : softenTheme(baseTheme)
+}
+
+export function getCardMonogramClass(cardId: string, variant: CardDesignVariant = "classic") {
+  if (variant === "storybook") {
+    return "text-slate-900/88 drop-shadow-[0_1px_1px_rgba(255,255,255,0.32)]"
+  }
+  return CARD_MONOGRAM_CLASS[cardId] ?? "text-white/95 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]"
 }

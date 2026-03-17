@@ -6,7 +6,7 @@ import { BookOpen, CircleHelp, Crown, Gem, Gift, LogOut, MoreVertical, PawPrint,
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/lib/auth-context"
 import {
@@ -51,6 +51,8 @@ import { useMewI18n } from "@/lib/mew-i18n"
 import { pickRandomBoss, scaleBossForPlayer } from "@/lib/mew-bosses"
 import { APP_VERSION } from "@/lib/version"
 import { pickCatCodexQuote } from "@/lib/cat-codex"
+import { CardDesignProvider, type CardDesignVariant } from "@/lib/mew-card-design"
+import { DEFAULT_CARD_DESIGN, loadLocalCardDesign, loadUserCardDesign, normalizeCardDesign, saveLocalCardDesign, saveUserCardDesign } from "@/lib/user-settings"
 
 type TabKey = "collection" | "deck" | "boosters" | "battle" | "help"
 type BattleStage = "idle" | "preparing" | "fighting" | "completed"
@@ -137,6 +139,8 @@ function AuthScreen() {
 export default function MewBattlePage() {
   const { user, isGuest, loading, signOut } = useAuth()
   const { t, language } = useMewI18n()
+  const [cardDesign, setCardDesign] = useState<CardDesignVariant>(DEFAULT_CARD_DESIGN)
+  const [cardDesignReady, setCardDesignReady] = useState(false)
   const [tab, setTab] = useState<TabKey>("collection")
   const [cards, setCards] = useState<MewCard[]>([])
   const [userCards, setUserCards] = useState<UserCard[]>([])
@@ -172,6 +176,40 @@ export default function MewBattlePage() {
   const [savingGameState, setSavingGameState] = useState(false)
 
   const userId = user?.uid ?? null
+
+  useEffect(() => {
+    setCardDesign(loadLocalCardDesign())
+    setCardDesignReady(true)
+  }, [])
+
+  useEffect(() => {
+    if (!userId || isGuest) return
+    let cancelled = false
+
+    void loadUserCardDesign(userId)
+      .then((savedDesign) => {
+        if (!cancelled && savedDesign) {
+          setCardDesign(savedDesign)
+        }
+      })
+      .catch(() => {
+        // ignore settings loading errors
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isGuest, userId])
+
+  useEffect(() => {
+    if (!cardDesignReady) return
+    saveLocalCardDesign(cardDesign)
+    if (userId && !isGuest) {
+      void saveUserCardDesign(userId, cardDesign).catch(() => {
+        // ignore settings save errors
+      })
+    }
+  }, [cardDesign, cardDesignReady, isGuest, userId])
 
   const catCodexQuote = useMemo(() => {
     // Deterministic per battle session to avoid SSR/client hydration mismatches.
@@ -666,14 +704,20 @@ export default function MewBattlePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background px-4">
-        <PawLoader label={t.loadingData} size="lg" />
-      </div>
+      <CardDesignProvider variant={cardDesign} setVariant={setCardDesign}>
+        <div className="min-h-screen flex items-center justify-center bg-background px-4">
+          <PawLoader label={t.loadingData} size="lg" />
+        </div>
+      </CardDesignProvider>
     )
   }
 
   if (!user && !isGuest) {
-    return <AuthScreen />
+    return (
+      <CardDesignProvider variant={cardDesign} setVariant={setCardDesign}>
+        <AuthScreen />
+      </CardDesignProvider>
+    )
   }
 
   const tabs: Array<{
@@ -690,6 +734,7 @@ export default function MewBattlePage() {
   ]
 
   return (
+    <CardDesignProvider variant={cardDesign} setVariant={setCardDesign}>
     <div className="min-h-screen bg-background">
       {globalLoaderLabel ? <PawLoader overlay size="lg" label={globalLoaderLabel} /> : null}
 
@@ -729,6 +774,12 @@ export default function MewBattlePage() {
                     {t.leaderboard}
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>{t.cardDesign}</DropdownMenuLabel>
+                <DropdownMenuRadioGroup value={cardDesign} onValueChange={(value) => setCardDesign(normalizeCardDesign(value))}>
+                  <DropdownMenuRadioItem value="classic">{t.cardDesignClassic}</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="storybook">{t.cardDesignStorybook}</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
                 <DropdownMenuSeparator />
                 {userId && (
                   <DropdownMenuItem variant="destructive" onSelect={() => setShowResetDialog(true)}>
@@ -1213,5 +1264,6 @@ export default function MewBattlePage() {
         onSave={() => void handleUnsavedSave()}
       />
     </div>
+    </CardDesignProvider>
   )
 }

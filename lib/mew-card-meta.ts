@@ -4,6 +4,61 @@ export type CardMetaLocalized = {
   ability: string
 }
 
+const CARD_ABILITY_BADGE_LABELS: Record<string, Record<"en" | "ru", string>> = {
+  cat_knight: {
+    en: "shield",
+    ru: "щит",
+  },
+  cat_healer: {
+    en: "healing",
+    ru: "лечение",
+  },
+  cat_alchemist: {
+    en: "shield",
+    ru: "щит",
+  },
+  cat_phantom: {
+    en: "dodge",
+    ru: "уклонение",
+  },
+  cat_ninja: {
+    en: "dodge",
+    ru: "уклонение",
+  },
+  cat_mage: {
+    en: "shield",
+    ru: "щит",
+  },
+  cat_berserker: {
+    en: "2x hit",
+    ru: "2x удар",
+  },
+  cat_vampire: {
+    en: "healing",
+    ru: "лечение",
+  },
+  cat_dragon: {
+    en: "2x fire",
+    ru: "2x огонь",
+  },
+  boss_raven: {
+    en: "dodge and shield",
+    ru: "уклонение и щит",
+  },
+  boss_dog: {
+    en: "bite and counter",
+    ru: "укус и контратака",
+  },
+  boss_rat: {
+    en: "dodge and poison",
+    ru: "уклонение и яд",
+  },
+}
+
+export function getCardAbilityBadgeLabel(cardId: string, language: "en" | "ru", fallback: string) {
+  return CARD_ABILITY_BADGE_LABELS[cardId]?.[language] ?? fallback
+}
+
 /** Russian localizations for cat and boss cards keyed by card/boss ID. */
 export const CARD_META_RU: Record<string, CardMetaLocalized> = {
   cat_knight: {

@@ -7,12 +7,13 @@ import { cn } from "@/lib/utils"
 import type { MewCard } from "@/lib/mew-types"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { useMewI18n } from "@/lib/mew-i18n"
-import { BOSS_TYPE_ICON, BOSS_TYPE_THEME } from "@/lib/mew-bosses"
-import { CARD_META_RU, CARD_META_JA } from "@/lib/mew-card-meta"
+import { BOSS_TYPE_ICON, getBossAffinityChipLabel, getBossTypeTheme } from "@/lib/mew-bosses"
+import { CARD_META_RU, CARD_META_JA, getCardAbilityBadgeLabel } from "@/lib/mew-card-meta"
 import { getCardSellPrice } from "@/lib/mew-firestore"
-import { getCardVisualTheme } from "@/lib/mew-card-visuals"
+import { getCardMonogramClass, getCardVisualTheme } from "@/lib/mew-card-visuals"
 import { CoinPawBadge } from "@/components/mew/coin-paw-badge"
-import { CARD_RARITY_BADGE_CLASS, CARD_STAT_BADGE_CLASS } from "@/lib/mew-card-badge-styles"
+import { getCardRarityTheme, getCardStatBadgeClass } from "@/lib/mew-card-badge-styles"
+import { useCardDesign } from "@/lib/mew-card-design"
 
 interface MewCardFaceProps {
   card: MewCard
@@ -21,44 +22,22 @@ interface MewCardFaceProps {
   className?: string
 }
 
-const RARITY_THEME: Record<MewCard["rarity"], {
-  ring: string
-  badge: string
-  glow: string
-}> = {
-  common: {
-    ring: "border-zinc-700/80",
-    badge: CARD_RARITY_BADGE_CLASS.common,
-    glow: "from-zinc-400/15 via-transparent to-transparent",
-  },
-  rare: {
-    ring: "border-sky-500/50",
-    badge: CARD_RARITY_BADGE_CLASS.rare,
-    glow: "from-sky-400/25 via-transparent to-transparent",
-  },
-  epic: {
-    ring: "border-fuchsia-500/50",
-    badge: CARD_RARITY_BADGE_CLASS.epic,
-    glow: "from-fuchsia-400/25 via-transparent to-transparent",
-  },
-  legendary: {
-    ring: "border-amber-500/60",
-    badge: CARD_RARITY_BADGE_CLASS.legendary,
-    glow: "from-amber-300/35 via-transparent to-transparent",
-  },
-}
-
 export function MewCardFace({ card, owned, compact = false, className }: MewCardFaceProps) {
   const { t, language } = useMewI18n()
-  const theme = RARITY_THEME[card.rarity]
+  const { variant } = useCardDesign()
+  const theme = getCardRarityTheme(card.rarity, variant)
+  const badgeStyles = getCardStatBadgeClass(variant)
+  const bossTypeTheme = getBossTypeTheme(variant)
   const affinities = card.bossAffinities ?? []
   const metaRu = language === "ru" ? (CARD_META_RU[card.id] ?? null) : null
   const displayName = metaRu?.name ?? card.name
   const displayLore = metaRu?.lore ?? card.lore ?? card.ability
   const displayAbility = metaRu?.ability ?? card.ability
+  const badgeAbility = getCardAbilityBadgeLabel(card.id, language, displayAbility)
   const [imgSrc, setImgSrc] = useState(card.imageUrl)
   const sellPrice = getCardSellPrice(card)
-  const visualTheme = getCardVisualTheme(card.id)
+  const visualTheme = getCardVisualTheme(card.id, variant)
+  const monogramClass = getCardMonogramClass(card.id, variant)
 
   const bossTypeLabel = (bossType: "raven" | "dog" | "rat") => {
     if (bossType === "raven") return t.bossRaven
@@ -69,8 +48,10 @@ export function MewCardFace({ card, owned, compact = false, className }: MewCard
   return (
     <article
       className={cn(
-        "group relative overflow-hidden rounded-2xl border bg-card/95 shadow-[0_8px_24px_rgba(2,6,23,0.35)]",
-        "transition-transform duration-200 hover:-translate-y-0.5",
+        "group relative overflow-hidden rounded-2xl border transition-transform duration-200 hover:-translate-y-0.5",
+        variant === "storybook"
+          ? "bg-[#fffaf2]/92 shadow-[0_12px_28px_rgba(110,89,62,0.18)]"
+          : "bg-card/95 shadow-[0_8px_24px_rgba(2,6,23,0.35)]",
         theme.ring,
         className,
       )}
@@ -86,10 +67,16 @@ export function MewCardFace({ card, owned, compact = false, className }: MewCard
             alt={card.name}
             width={320}
             height={256}
-            className="h-full w-full scale-[1.08] object-contain object-center drop-shadow-[0_10px_22px_rgba(0,0,0,0.28)]"
+            className={cn(
+              "h-full w-full scale-[1.08] object-contain object-center drop-shadow-[0_10px_22px_rgba(0,0,0,0.28)]",
+              variant === "storybook" && "brightness-[1.04] contrast-[0.84] saturate-[0.8] sepia-[0.14]",
+            )}
             sizes="(max-width: 768px) 50vw, 18rem"
             onError={() => setImgSrc(`/cards/${card.id}.svg`)}
           />
+          {variant === "storybook" && (
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_28%_22%,_rgba(255,249,240,0.34),_transparent_34%),linear-gradient(180deg,rgba(255,245,233,0.12),rgba(243,226,205,0.26))]" />
+          )}
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/48 via-black/6 to-transparent" />
         <span
@@ -129,16 +116,16 @@ export function MewCardFace({ card, owned, compact = false, className }: MewCard
               <div>
                 <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">{t.paramList}</p>
                 <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2.5 items-center text-xs">
-                  <div className="w-fit"><span className={CARD_STAT_BADGE_CLASS.attack}>ATK {card.attack}</span></div>
+                  <div className="w-fit"><span className={badgeStyles.attack}>ATK {card.attack}</span></div>
                   <span className="text-foreground/85">{t.paramAttackDesc}</span>
 
-                  <div className="w-fit"><span className={CARD_STAT_BADGE_CLASS.health}>HP {card.health}</span></div>
+                  <div className="w-fit"><span className={badgeStyles.health}>HP {card.health}</span></div>
                   <span className="text-foreground/85">{t.paramHealthDesc}</span>
 
                   <div className="w-fit"><span className={cn("inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]", theme.badge)}>{card.rarity}</span></div>
                   <span className="text-foreground/85">{t.paramRarityDesc}</span>
 
-                  <div className="w-fit"><span className={CARD_STAT_BADGE_CLASS.ability}>{displayAbility}</span></div>
+                  <div className="w-fit"><span className={badgeStyles.ability}>{displayAbility}</span></div>
                   <span className="text-foreground/85">{t.paramAbilityDesc}</span>
 
                   {affinities.length > 0 ? (
@@ -147,7 +134,7 @@ export function MewCardFace({ card, owned, compact = false, className }: MewCard
                         {affinities.map((affinity) => (
                           <span
                             key={`dlg-${card.id}-${affinity.bossType}`}
-                            className={cn("inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px]", BOSS_TYPE_THEME[affinity.bossType].chipClass)}
+                            className={cn("inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px]", bossTypeTheme[affinity.bossType].chipClass)}
                           >
                             <Image src={BOSS_TYPE_ICON[affinity.bossType]} alt={bossTypeLabel(affinity.bossType)} width={12} height={12} className="rounded-sm" />
                             {bossTypeLabel(affinity.bossType)} Lv{affinity.level}
@@ -176,20 +163,24 @@ export function MewCardFace({ card, owned, compact = false, className }: MewCard
         <div className="flex items-start justify-between gap-2">
           <div>
             {CARD_META_JA[card.id] && (
-              <p className="text-[9px] font-light tracking-[0.18em] text-muted-foreground/55 leading-none mb-0.5">{CARD_META_JA[card.id]}</p>
+              <p className={cn("text-[9px] font-light tracking-[0.18em] leading-none mb-0.5", monogramClass)}>{CARD_META_JA[card.id]}</p>
             )}
-            <h4 className={cn("font-semibold leading-tight", compact ? "text-sm" : "text-base")}>{displayName}</h4>
+            <h4 className={cn(
+              "font-semibold leading-tight",
+              compact ? "text-sm" : "text-base",
+              variant === "storybook" ? "text-[#443429] drop-shadow-[0_1px_0_rgba(255,255,255,0.38)]" : "text-foreground",
+            )}>{displayName}</h4>
           </div>
           {typeof owned === "number" && (
-            <span className={CARD_STAT_BADGE_CLASS.ownedCompact}>
+            <span className={badgeStyles.ownedCompact}>
               x{owned}
             </span>
           )}
         </div>
 
         <div className="flex flex-nowrap items-center gap-1.5 overflow-hidden text-[10px] font-medium">
-          <span className={CARD_STAT_BADGE_CLASS.attackCompact}>ATK {card.attack}</span>
-          <span className={CARD_STAT_BADGE_CLASS.healthCompact}>HP {card.health}</span>
+          <span className={badgeStyles.attackCompact}>ATK {card.attack}</span>
+          <span className={badgeStyles.healthCompact}>HP {card.health}</span>
         </div>
 
         <div className="flex min-h-[22px] flex-wrap items-center gap-1.5">
@@ -199,17 +190,16 @@ export function MewCardFace({ card, owned, compact = false, className }: MewCard
           {affinities.map((affinity) => (
             <span
               key={`${card.id}-${affinity.bossType}-chip`}
-              className={cn("inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px]", BOSS_TYPE_THEME[affinity.bossType].chipClass)}
+              className={cn("inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold tracking-[0.08em]", bossTypeTheme[affinity.bossType].chipClass)}
             >
-              <Image src={BOSS_TYPE_ICON[affinity.bossType]} alt={bossTypeLabel(affinity.bossType)} width={12} height={12} className="rounded-sm" />
-              Lv{affinity.level}
+              {getBossAffinityChipLabel(affinity.bossType, language)}Lv{affinity.level}
             </span>
           ))}
         </div>
 
         <div className="min-h-[22px]">
-          <span className={cn(CARD_STAT_BADGE_CLASS.abilityCompact, compact ? "text-[9px] px-1.5 py-0.5" : "") }>
-            <span className="truncate">{displayAbility}</span>
+          <span className={cn(badgeStyles.abilityCompact, compact ? "text-[9px] px-1.5 py-0.5" : "") }>
+            <span className="truncate">{badgeAbility}</span>
           </span>
         </div>
       </div>

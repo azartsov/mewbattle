@@ -9,6 +9,62 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: VersionHistoryEntry[] = [
   {
+    version: "0.213",
+    date: "2026-03-18",
+    summary: {
+      ru: "В мягком аниме-дизайне названия персонажей стали контрастнее, а изображения — мягче, теплее и более сказочными.",
+      en: "In the soft anime card design, character names are now more readable and character art is softer, warmer, and more fantastical.",
+    },
+  },
+  {
+    version: "0.212",
+    date: "2026-03-18",
+    summary: {
+      ru: "Добавлен второй, более мягкий дизайн карточек в аниме-стилистике и переключатель между вариантами в меню с сохранением выбора.",
+      en: "Added a second, softer anime-inspired card design plus a menu switcher that saves the selected variant.",
+    },
+  },
+  {
+    version: "0.211",
+    date: "2026-03-18",
+    summary: {
+      ru: "Иероглифические имена на карточках стали контрастнее: на светлых темах они тёмные, на тёмных — светлые.",
+      en: "Japanese card-name monograms are now more contrasty: dark on light themes and light on dark themes.",
+    },
+  },
+  {
+    version: "0.210",
+    date: "2026-03-18",
+    summary: {
+      ru: "Цвета чипов параметров, умений и специализаций стали мягче и менее контрастными.",
+      en: "Parameter, ability, and specialization chips now use a softer, less contrast-heavy color palette.",
+    },
+  },
+  {
+    version: "0.209",
+    date: "2026-03-18",
+    summary: {
+      ru: "Буква специализации на карточках теперь показывается вплотную к уровню, например пLv1 и dLv1.",
+      en: "Specialization letters on cards are now rendered flush with the level, for example pLv1 and dLv1.",
+    },
+  },
+  {
+    version: "0.208",
+    date: "2026-03-18",
+    summary: {
+      ru: "Буквенные метки специализаций теперь зависят от языка интерфейса: русские буквы в RU и латиница в EN.",
+      en: "Specialization letter markers now follow the interface language: Cyrillic in RU and Latin in EN.",
+    },
+  },
+  {
+    version: "0.207",
+    date: "2026-03-18",
+    summary: {
+      ru: "На лицевой стороне карточек умения стали короче и понятнее, а специализации теперь показываются буквенными метками вместо мини-иконок боссов.",
+      en: "Card-face ability labels are now shorter and clearer, and specializations now use letter markers instead of mini boss icons.",
+    },
+  },
+  {
     version: "0.206",
     date: "2026-03-18",
     summary: {

@@ -1,4 +1,11 @@
 import type { BossType, FighterCard } from "./mew-types"
+import type { CardDesignVariant } from "./mew-card-design"
+
+const BOSS_AFFINITY_CHIP_LABEL: Record<BossType, { en: string; ru: string }> = {
+  raven: { en: "c", ru: "в" },
+  dog: { en: "d", ru: "п" },
+  rat: { en: "r", ru: "к" },
+}
 
 export const BOSS_TYPE_ICON: Record<BossType, string> = {
   raven: "/bosses/evil_raven.svg",
@@ -12,23 +19,47 @@ export const BOSS_TYPE_LABEL: Record<BossType, string> = {
   rat: "Rat",
 }
 
-export const BOSS_TYPE_THEME: Record<BossType, {
+const CLASSIC_BOSS_TYPE_THEME: Record<BossType, {
   chipClass: string
   badgeClass: string
 }> = {
   raven: {
-    chipClass: "border-violet-300/30 bg-[#3f235f] text-[#f4e8ff]",
+    chipClass: "border-violet-200/28 bg-[#574270]/76 text-[#f6eeff]",
     badgeClass: "border-violet-400/55 bg-violet-900/55 text-violet-100",
   },
   dog: {
-    chipClass: "border-amber-300/30 bg-[#5f3d14] text-[#fff1d6]",
+    chipClass: "border-amber-200/28 bg-[#72563a]/76 text-[#fff3e3]",
     badgeClass: "border-amber-400/55 bg-amber-900/55 text-amber-100",
   },
   rat: {
-    chipClass: "border-emerald-300/30 bg-[#184330] text-[#dcffef]",
+    chipClass: "border-emerald-200/28 bg-[#305648]/76 text-[#e9fff4]",
     badgeClass: "border-emerald-400/55 bg-emerald-900/55 text-emerald-100",
   },
 }
+
+const STORYBOOK_BOSS_TYPE_THEME: Record<BossType, {
+  chipClass: string
+  badgeClass: string
+}> = {
+  raven: {
+    chipClass: "border-violet-300/42 bg-[#ebe5f3]/86 text-[#6b5e7e]",
+    badgeClass: "border-violet-300/55 bg-[#ece5f4]/82 text-[#665876]",
+  },
+  dog: {
+    chipClass: "border-amber-300/42 bg-[#f5eadb]/86 text-[#81664a]",
+    badgeClass: "border-amber-300/55 bg-[#f7ecd8]/82 text-[#7d6443]",
+  },
+  rat: {
+    chipClass: "border-emerald-300/42 bg-[#e4efe7]/86 text-[#577263]",
+    badgeClass: "border-emerald-300/55 bg-[#e7f1e8]/82 text-[#566e61]",
+  },
+}
+
+export function getBossTypeTheme(variant: CardDesignVariant = "classic") {
+  return variant === "storybook" ? STORYBOOK_BOSS_TYPE_THEME : CLASSIC_BOSS_TYPE_THEME
+}
+
+export const BOSS_TYPE_THEME = CLASSIC_BOSS_TYPE_THEME
 
 export const BOSS_FIGHTERS: FighterCard[] = [
   {
@@ -68,6 +99,10 @@ export const BOSS_FIGHTERS: FighterCard[] = [
     imageUrl: BOSS_TYPE_ICON.rat,
   },
 ]
+
+export function getBossAffinityChipLabel(bossType: BossType, language: "en" | "ru") {
+  return BOSS_AFFINITY_CHIP_LABEL[bossType][language]
+}
 
 export function pickRandomBoss(excludeBossId?: string): FighterCard {
   const pool = excludeBossId

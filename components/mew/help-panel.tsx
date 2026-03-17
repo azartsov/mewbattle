@@ -6,8 +6,9 @@ import { useMewI18n } from "@/lib/mew-i18n"
 import type { MewCard } from "@/lib/mew-types"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
-import { BOSS_TYPE_ICON, BOSS_TYPE_THEME } from "@/lib/mew-bosses"
-import { CARD_RARITY_BADGE_CLASS, CARD_STAT_BADGE_CLASS } from "@/lib/mew-card-badge-styles"
+import { BOSS_TYPE_ICON, getBossTypeTheme } from "@/lib/mew-bosses"
+import { getCardRarityBadgeClass, getCardStatBadgeClass } from "@/lib/mew-card-badge-styles"
+import { useCardDesign } from "@/lib/mew-card-design"
 
 const LEGEND_SAMPLE_CARD: MewCard = {
   id: "cat_mage",
@@ -24,15 +25,12 @@ const LEGEND_SAMPLE_CARD: MewCard = {
   ],
 }
 
-const RARITY_BADGE: Record<MewCard["rarity"], string> = {
-  common: CARD_RARITY_BADGE_CLASS.common,
-  rare: CARD_RARITY_BADGE_CLASS.rare,
-  epic: CARD_RARITY_BADGE_CLASS.epic,
-  legendary: CARD_RARITY_BADGE_CLASS.legendary,
-}
-
 export function HelpPanel() {
   const { t } = useMewI18n()
+  const { variant } = useCardDesign()
+  const badgeStyles = getCardStatBadgeClass(variant)
+  const rarityBadge = getCardRarityBadgeClass(variant)
+  const bossTypeTheme = getBossTypeTheme(variant)
 
   const bossTypeLabel = (bossType: "raven" | "dog" | "rat") => {
     if (bossType === "raven") return t.bossRaven
@@ -69,23 +67,23 @@ export function HelpPanel() {
         <div className="grid gap-3 md:grid-cols-[190px_1fr] items-start">
           <MewCardFace card={LEGEND_SAMPLE_CARD} owned={1} compact className="max-w-[190px]" />
           <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2.5 items-center text-xs">
-            <div className="w-fit"><span className={CARD_STAT_BADGE_CLASS.attack}>ATK {LEGEND_SAMPLE_CARD.attack}</span></div>
+            <div className="w-fit"><span className={badgeStyles.attack}>ATK {LEGEND_SAMPLE_CARD.attack}</span></div>
             <span className="text-foreground/85">{t.paramAttackDesc}</span>
 
-            <div className="w-fit"><span className={CARD_STAT_BADGE_CLASS.health}>HP {LEGEND_SAMPLE_CARD.health}</span></div>
+            <div className="w-fit"><span className={badgeStyles.health}>HP {LEGEND_SAMPLE_CARD.health}</span></div>
             <span className="text-foreground/85">{t.paramHealthDesc}</span>
 
-            <div className="w-fit"><span className={CARD_STAT_BADGE_CLASS.owned}>x1</span></div>
+            <div className="w-fit"><span className={badgeStyles.owned}>x1</span></div>
             <span className="text-foreground/85">{t.helpStatOwned}</span>
 
             <div className="w-fit">
-              <span className={cn("inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]", RARITY_BADGE[LEGEND_SAMPLE_CARD.rarity])}>
+              <span className={cn("inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]", rarityBadge[LEGEND_SAMPLE_CARD.rarity])}>
                 {LEGEND_SAMPLE_CARD.rarity}
               </span>
             </div>
             <span className="text-foreground/85">{t.paramRarityDesc}</span>
 
-            <div className="w-fit"><span className={CARD_STAT_BADGE_CLASS.ability}>{LEGEND_SAMPLE_CARD.ability}</span></div>
+            <div className="w-fit"><span className={badgeStyles.ability}>{LEGEND_SAMPLE_CARD.ability}</span></div>
             <span className="text-foreground/85">{t.paramAbilityDesc}</span>
 
             <div className="w-fit flex flex-wrap gap-1">
@@ -94,7 +92,7 @@ export function HelpPanel() {
                   key={`help-legend-${affinity.bossType}`}
                   className={cn(
                     "inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px]",
-                    BOSS_TYPE_THEME[affinity.bossType].chipClass,
+                    bossTypeTheme[affinity.bossType].chipClass,
                   )}
                 >
                   <Image
