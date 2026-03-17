@@ -907,7 +907,7 @@ export default function MewBattlePage() {
       {globalLoaderLabel ? <PawLoader overlay size="lg" label={globalLoaderLabel} /> : null}
 
       <header className="border-b border-border bg-card/70 backdrop-blur sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-start justify-between gap-3 sm:items-center">
           <div className="flex items-center gap-2">
             <div className="relative h-11 w-11 overflow-hidden rounded-2xl border border-primary/40 bg-primary/10">
               <Image src="/cards/cat_knight.svg" alt="Mew mascot" fill className="object-cover" />
@@ -917,26 +917,26 @@ export default function MewBattlePage() {
               <p className="text-xs text-muted-foreground font-medium">{t.appSubtitle}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-start gap-2 sm:items-center">
             {profile && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button type="button" className="rounded-full" aria-label={t.coinsTooltip}>
-                    <CoinPawBadge amount={profile.coins} compact />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{t.coinsTooltip}</TooltipContent>
-              </Tooltip>
-            )}
-            {profile && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button type="button" className="rounded-full" aria-label={t.totalCardsValueTooltip}>
-                    <CoinPawBadge amount={totalCardsValue} compact className="border-sky-500/30 bg-sky-500/10 text-sky-100" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{t.totalCardsValueTooltip}</TooltipContent>
-              </Tooltip>
+              <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="rounded-full" aria-label={t.coinsTooltip}>
+                      <CoinPawBadge amount={profile.coins} compact />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t.coinsTooltip}</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="rounded-full" aria-label={t.totalCardsValueTooltip}>
+                      <CoinPawBadge amount={totalCardsValue} compact className="border-sky-500/30 bg-sky-500/10 text-sky-100" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t.totalCardsValueTooltip}</TooltipContent>
+                </Tooltip>
+              </div>
             )}
             <LanguageToggle />
             <DropdownMenu>
@@ -1288,18 +1288,18 @@ export default function MewBattlePage() {
 
                       <div className="space-y-2">
                         <p className="text-sm font-medium">{t.chooseBattleDeck}</p>
-                        <div className={waitingForBattleDeckChoice ? "battle-deck-choice-glow space-y-2 rounded-2xl border p-3" : "space-y-2"}>
+                        <div className={waitingForBattleDeckChoice ? "battle-deck-choice-glow flex flex-wrap gap-2 rounded-2xl border p-2.5" : "flex flex-wrap gap-2"}>
                           {DECK_SLOT_KEYS.map((slotKey) => {
                             const slotDeck = decksBySlot.get(slotKey)
                             const availableCards = battleDeckCardsBySlot.get(slotKey)?.length ?? 0
                             const isSelected = battleDeckSlot === slotKey
                             const shouldHighlightChoice = waitingForBattleDeckChoice && availableCards > 0 && !isSelected
                             return (
-                              <div key={slotKey}>
+                              <div key={slotKey} className="min-w-0">
                                 <Button
                                   size="sm"
                                   variant={isSelected ? "default" : "outline"}
-                                  className={shouldHighlightChoice ? "battle-deck-choice-chip rounded-full" : "rounded-full"}
+                                  className={shouldHighlightChoice ? "battle-deck-choice-chip h-auto max-w-full rounded-full px-3 py-1 text-xs sm:text-sm" : "h-auto max-w-full rounded-full px-3 py-1 text-xs sm:text-sm"}
                                   disabled={availableCards === 0}
                                   onClick={() => setBattleDeckSlot((prev) => prev === slotKey ? null : slotKey)}
                                 >
@@ -1310,25 +1310,25 @@ export default function MewBattlePage() {
                           })}
                         </div>
                         {battleDeckSlot && previewDeckCards.length > 0 && (
-                          <div className="space-y-2 rounded-2xl border border-border/60 bg-card/30 p-3">
-                            <p className="text-xs font-medium uppercase tracking-[0.2em] text-slate-300/80">
+                          <div className="space-y-1.5 rounded-2xl border border-border/60 bg-card/30 p-2.5">
+                            <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-300/80">
                               {decksBySlot.get(battleDeckSlot)?.deckName ?? getDefaultDeckName(battleDeckSlot)}
                             </p>
-                            <div className="flex flex-wrap gap-1.5 rounded-xl border border-border/60 bg-card/40 p-2">
+                            <div className="flex flex-wrap gap-1 rounded-xl border border-border/60 bg-card/40 p-1.5">
                               {previewDeckCards.map((card, idx) => (
-                                <MewCardFace key={`preview-${battleDeckSlot}-${card.id}-${idx}`} card={card} compact className="max-w-[130px]" />
+                                <MewCardFace key={`preview-${battleDeckSlot}-${card.id}-${idx}`} card={card} compact className="max-w-[96px] sm:max-w-[110px]" />
                               ))}
                             </div>
-                            <div className="battle-reward-box-glow rounded-xl border px-3 py-2">
-                              <p className="text-xs font-medium text-sky-100">{t.battleRewardFormula}</p>
-                              <p className="mt-1 text-sm text-slate-200">
+                            <div className="battle-reward-box-glow rounded-xl border px-2.5 py-1.5">
+                              <p className="text-[11px] font-medium leading-snug text-sky-100">{t.battleRewardFormula}</p>
+                              <p className="mt-1 text-xs leading-snug text-slate-200">
                                 {t.battleBase}: <span className="font-semibold text-amber-300">{battleRewardRange.min}</span>
                                 {" · "}
                                 {t.battleHpBonus}: <span className="font-semibold text-emerald-300">+HP</span>
                                 {" · "}
                                 {t.battleCost}: <span className="font-semibold text-rose-300">-{BATTLE_ENTRY_COST} {t.coins}</span>
                               </p>
-                              <p className="mt-1 text-[11px] text-slate-300/75">{t.rewardInverseTip}</p>
+                              <p className="mt-1 text-[10px] leading-snug text-slate-300/75">{t.rewardInverseTip}</p>
                             </div>
                           </div>
                         )}
