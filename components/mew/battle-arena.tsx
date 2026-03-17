@@ -6,6 +6,7 @@ import { Cat, Skull } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { applyTeamHeal, calculateTurn, getMagicalHealingAmount, hasMagicalHealingAbility, rollAbilityProcs } from "@/lib/mew-engine"
+import type { LeaderboardSyncResult } from "@/lib/mew-firestore"
 import type { BattleLogEntry, FighterCard, MewCard } from "@/lib/mew-types"
 import { BattleFighterCard } from "@/components/mew/battle-fighter-card"
 import { useMewI18n } from "@/lib/mew-i18n"
@@ -13,7 +14,10 @@ import { BOSS_TYPE_LABEL, pickRandomBoss } from "@/lib/mew-bosses"
 
 interface BattleArenaProps {
   deckCards: MewCard[]
-  onSaveBattle: (winnerId: string, bossId: string, log: BattleLogEntry[], hpBonus: number) => Promise<number>
+  onSaveBattle: (winnerId: string, bossId: string, log: BattleLogEntry[], hpBonus: number) => Promise<{
+    rewardCoins: number
+    leaderboardResult: LeaderboardSyncResult | null
+  }>
   deckName: string
   predictedWinRewardBase?: number
   initialBoss?: FighterCard
@@ -99,6 +103,7 @@ interface BattleResolutionState {
   winnerId: "player" | "boss"
   rewardCoins: number
   defeatQuote: string | null
+  leaderboardResult: LeaderboardSyncResult | null
 }
 
 const DAMAGE_PETAL_DURATION_MS = 2100
@@ -224,7 +229,10 @@ export function BattleArena({
   const scheduleBattleResolution = (
     winnerId: "player" | "boss",
     rewardCoins: number,
-    persistBattle: () => Promise<number>,
+    persistBattle: () => Promise<{
+      rewardCoins: number
+      leaderboardResult: LeaderboardSyncResult | null
+    }>,
   ) => {
     clearBattleResolutionRevealTimeout()
     battleResolutionRevealTimeoutRef.current = window.setTimeout(() => {
@@ -232,13 +240,14 @@ export function BattleArena({
         winnerId,
         rewardCoins,
         defeatQuote: winnerId === "boss" ? getRandomDefeatQuote() : null,
+        leaderboardResult: null,
       })
       setSaving(true)
       void persistBattle()
-        .then((settledRewardCoins) => {
+        .then(({ rewardCoins: settledRewardCoins, leaderboardResult }) => {
           setBattleResolution((current) => (
             current?.winnerId === winnerId
-              ? { ...current, rewardCoins: settledRewardCoins }
+              ? { ...current, rewardCoins: settledRewardCoins, leaderboardResult }
               : current
           ))
         })
@@ -1207,6 +1216,18 @@ export function BattleArena({
                         </p>
                       )}
                     </div>
+
+                    {battleResolution.winnerId === "player" && battleResolution.leaderboardResult?.isNewRecord && (
+                      <div className="max-w-[28rem] space-y-3 rounded-[28px] border border-amber-200/15 bg-slate-950/78 px-5 py-4 text-slate-100 shadow-[0_16px_34px_rgba(0,0,0,0.32)] backdrop-blur-md sm:px-6 sm:py-5">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-amber-200/92">{t.leaderboardNewRecord}</p>
+                        <p className="text-sm leading-relaxed text-slate-100/90 sm:text-base">{t.leaderboardNewRecordMessage}</p>
+                        <div className="space-y-1 text-sm sm:text-base">
+                          <p><span className="text-amber-200/86">{t.leaderboardPlace}</span>: #{battleResolution.leaderboardResult.leaderboardRank ?? "—"}</p>
+                          <p><span className="text-amber-200/86">{t.leaderboardTotalScore}</span>: {battleResolution.leaderboardResult.totalScore}</p>
+                          <p className="text-xs leading-relaxed text-slate-300/88 sm:text-sm">{t.lbScoreFormula}: {battleResolution.leaderboardResult.coinsValue} + {battleResolution.leaderboardResult.cardsValue}</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

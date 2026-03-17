@@ -871,16 +871,29 @@ export async function ensureNicknameFromEmail(userId: string, email?: string): P
 export interface LeaderboardEntry {
   userId: string
   nickname: string
-  scoreCoins: number
+  totalScore: number
+  coinsValue: number
+  cardsValue: number
   cardCount: number
   updatedAtMs: number
   scoreVersion?: number
+}
+
+export interface LeaderboardSyncResult {
+  totalScore: number
+  coinsValue: number
+  cardsValue: number
+  cardCount: number
+  leaderboardRank: number | null
+  isNewRecord: boolean
 }
 
 interface LeaderboardDoc {
   userId?: string
   nickname?: string
   scoreCoins?: number
+  coinsValue?: number
+  cardsValue?: number
   cardCount?: number
   updatedAtMs?: number
   scoreVersion?: number
@@ -899,9 +912,28 @@ function toCoinsLeaderboardScore(coins: number | undefined): number {
   return Math.max(0, coins ?? STARTING_COINS)
 }
 
+function toCardsLeaderboardScore(userCards: UserCard[], cardsById: Map<string, MewCard>): number {
+  return userCards.reduce((sum, userCard) => {
+    if (userCard.quantity <= 0) return sum
+    const card = cardsById.get(userCard.cardId)
+    if (!card) return sum
+    return sum + getCardSellPrice(card) * userCard.quantity
+  }, 0)
+}
+
 function readStoredLeaderboardScore(entry: Partial<LeaderboardDoc> | undefined): number {
   if (!entry) return 0
   return Math.max(0, entry.scoreCoins ?? 0)
+}
+
+function readStoredCoinsValue(entry: Partial<LeaderboardDoc> | undefined): number {
+  if (!entry) return 0
+  return Math.max(0, entry.coinsValue ?? 0)
+}
+
+function readStoredCardsValue(entry: Partial<LeaderboardDoc> | undefined): number {
+  if (!entry) return 0
+  return Math.max(0, entry.cardsValue ?? 0)
 }
 
 function resolveLeaderboardNickname(profile: UserProfile | undefined, fallbackEmail?: string): string {
@@ -914,54 +946,140 @@ function resolveLeaderboardNickname(profile: UserProfile | undefined, fallbackEm
   return (profile?.userId ?? "player").slice(0, 10)
 }
 
-export async function syncLeaderboardAfterBattle(userId: string, fallbackEmail?: string): Promise<void> {
-  try {
-    await ensureUserProfile(userId)
-    const profileSnap = await getDoc(profileRef(userId))
-    const profile = profileSnap.data() as UserProfile | undefined
-    const score = toCoinsLeaderboardScore(profile?.coins)
+async function buildLeaderboardEntry(userId: string, fallbackEmail?: string): Promise<LeaderboardDoc> {
+  await ensureUserProfile(userId)
+  const [profileSnap, cards, userCards] = await Promise.all([
+    getDoc(profileRef(userId)),
+    fetchCards(),
+    fetchUserCards(userId),
+  ])
+  const profile = profileSnap.data() as UserProfile | undefined
+  const cardsById = new Map(cards.map((card) => [card.id, card]))
+  const coinsValue = toCoinsLeaderboardScore(profile?.coins)
+  const cardsValue = toCardsLeaderboardScore(userCards, cardsById)
 
-    const entry: LeaderboardDoc = {
+  return {
+    userId,
+    nickname: resolveLeaderboardNickname(profile, fallbackEmail),
+    scoreCoins: coinsValue + cardsValue,
+    coinsValue,
+    cardsValue,
+    cardCount: profile?.cardCount ?? 0,
+    updatedAtMs: Date.now(),
+    scoreVersion: 4,
+  }
+}
+
+async function computeLeaderboardRank(userId: string, entry: LeaderboardDoc): Promise<number | null> {
+  try {
+    const snap = await getDocs(query(collection(db, "leaderboard"), orderBy("scoreCoins", "desc")))
+    const rankedEntries = snap.docs.map((d) => ({
+      userId: (d.data() as LeaderboardDoc).userId || d.id,
+      scoreCoins: readStoredLeaderboardScore(d.data() as LeaderboardDoc),
+      updatedAtMs: (d.data() as LeaderboardDoc).updatedAtMs ?? 0,
+    }))
+
+    const mergedEntries = rankedEntries.filter((candidate) => candidate.userId !== userId)
+    mergedEntries.push({
       userId,
-      nickname: resolveLeaderboardNickname(profile, fallbackEmail),
-      scoreCoins: score,
-      cardCount: profile?.cardCount ?? 0,
-      updatedAtMs: Date.now(),
-      scoreVersion: 3,
-    }
+      scoreCoins: readStoredLeaderboardScore(entry),
+      updatedAtMs: entry.updatedAtMs ?? Date.now(),
+    })
+
+    mergedEntries.sort((left, right) => {
+      if (right.scoreCoins !== left.scoreCoins) return right.scoreCoins - left.scoreCoins
+      return right.updatedAtMs - left.updatedAtMs
+    })
+
+    const rank = mergedEntries.findIndex((candidate) => candidate.userId === userId)
+    return rank === -1 ? null : rank + 1
+  } catch (error) {
+    if (isPermissionDenied(error)) return null
+    throw error
+  }
+}
+
+function toLeaderboardEntry(data: LeaderboardDoc, fallbackUserId: string): LeaderboardEntry {
+  return {
+    userId: data.userId || fallbackUserId,
+    nickname: data.nickname?.trim() || data.userId?.slice(0, 8) || fallbackUserId.slice(0, 8),
+    totalScore: readStoredLeaderboardScore(data),
+    coinsValue: readStoredCoinsValue(data),
+    cardsValue: readStoredCardsValue(data),
+    cardCount: data.cardCount ?? 0,
+    updatedAtMs: data.updatedAtMs ?? 0,
+    scoreVersion: 4,
+  }
+}
+
+async function fetchLeaderboardFromProfiles(topN: number): Promise<LeaderboardEntry[]> {
+  const [profileSnap, cards] = await Promise.all([
+    getDocs(collection(db, "user_profiles")),
+    fetchCards(),
+  ])
+  const cardsById = new Map(cards.map((card) => [card.id, card]))
+
+  const entries = await Promise.all(profileSnap.docs.map(async (profileDoc) => {
+    const profile = profileDoc.data() as UserProfile
+    const userCards = await fetchUserCards(profile.userId)
+    const coinsValue = toCoinsLeaderboardScore(profile.coins)
+    const cardsValue = toCardsLeaderboardScore(userCards, cardsById)
+
+    return {
+      userId: profile.userId,
+      nickname: profile.nickname?.trim() || profile.userId.slice(0, 8),
+      totalScore: coinsValue + cardsValue,
+      coinsValue,
+      cardsValue,
+      cardCount: profile.cardCount ?? 0,
+      updatedAtMs: profile.updatedAtMs ?? 0,
+      scoreVersion: 4,
+    } satisfies LeaderboardEntry
+  }))
+
+  return entries
+    .sort((left, right) => {
+      if (right.totalScore !== left.totalScore) return right.totalScore - left.totalScore
+      return right.updatedAtMs - left.updatedAtMs
+    })
+    .slice(0, topN)
+}
+
+export async function syncLeaderboardAfterBattle(userId: string, fallbackEmail?: string): Promise<LeaderboardSyncResult> {
+  try {
+    const entry = await buildLeaderboardEntry(userId, fallbackEmail)
+    const score = readStoredLeaderboardScore(entry)
 
     const existingSnap = await getDoc(leaderboardRef(userId))
+    const existing = existingSnap.exists() ? existingSnap.data() as LeaderboardDoc : undefined
+    const previousBest = !existing || (existing.scoreVersion ?? 1) !== 4 ? 0 : readStoredLeaderboardScore(existing)
+    const isNewRecord = score > previousBest
 
-    // После первого боя фиксируем запись всегда, если ее еще нет.
-    if (!existingSnap.exists()) {
+    if (!existingSnap.exists() || (existing?.scoreVersion ?? 1) !== 4 || score > previousBest) {
       await setDoc(leaderboardRef(userId), entry, { merge: true })
-      return
     }
 
-    const existing = existingSnap.data() as LeaderboardDoc
-    if ((existing.scoreVersion ?? 1) !== 3) {
-      await setDoc(leaderboardRef(userId), entry, { merge: true })
-      return
-    }
+    const leaderboardRank = isNewRecord ? await computeLeaderboardRank(userId, entry) : null
 
-    if (score <= readStoredLeaderboardScore(existing)) return
-
-    const topSnap = await getDocs(query(collection(db, "leaderboard"), orderBy("scoreCoins", "desc"), firestoreLimit(25)))
-    const topEntries = topSnap.docs.map((d) => d.data() as LeaderboardDoc)
-
-    const isAlreadyInTop = topEntries.some((item) => item.userId === userId)
-    const cutoff = topEntries.length < 25
-      ? Number.NEGATIVE_INFINITY
-      : readStoredLeaderboardScore(topEntries[topEntries.length - 1])
-
-    // Обновляем только при улучшении результата и попадании в топ-25.
-    if (isAlreadyInTop || score > cutoff) {
-      await setDoc(leaderboardRef(userId), entry, { merge: true })
+    return {
+      totalScore: score,
+      coinsValue: readStoredCoinsValue(entry),
+      cardsValue: readStoredCardsValue(entry),
+      cardCount: entry.cardCount ?? 0,
+      leaderboardRank,
+      isNewRecord,
     }
   } catch (error) {
     if (isPermissionDenied(error)) {
-      // Правила Firestore могут не содержать коллекцию leaderboard.
-      return
+      const entry = await buildLeaderboardEntry(userId, fallbackEmail)
+      return {
+        totalScore: readStoredLeaderboardScore(entry),
+        coinsValue: readStoredCoinsValue(entry),
+        cardsValue: readStoredCardsValue(entry),
+        cardCount: entry.cardCount ?? 0,
+        leaderboardRank: null,
+        isNewRecord: false,
+      }
     }
     throw error
   }
@@ -977,57 +1095,14 @@ export async function fetchLeaderboard(topN = 25): Promise<LeaderboardEntry[]> {
       )
       const snap = await getDocs(q)
       if (snap.empty) {
-        const fallbackQ = query(
-          collection(db, "user_profiles"),
-          orderBy("coins", "desc"),
-          firestoreLimit(topN),
-        )
-        const fallbackSnap = await getDocs(fallbackQ)
-        return fallbackSnap.docs.map((d) => {
-          const data = d.data() as UserProfile
-          return {
-            userId: data.userId,
-            nickname: data.nickname?.trim() || data.userId.slice(0, 8),
-            scoreCoins: toCoinsLeaderboardScore(data.coins),
-            cardCount: data.cardCount ?? 0,
-            updatedAtMs: data.updatedAtMs ?? 0,
-            scoreVersion: 3,
-          }
-        })
+        return fetchLeaderboardFromProfiles(topN)
       }
 
-      return snap.docs.map((d) => {
-        const data = d.data() as LeaderboardDoc
-        return {
-          userId: data.userId || d.id,
-          nickname: data.nickname?.trim() || data.userId?.slice(0, 8) || d.id.slice(0, 8),
-          scoreCoins: readStoredLeaderboardScore(data),
-          cardCount: data.cardCount ?? 0,
-          updatedAtMs: data.updatedAtMs ?? 0,
-          scoreVersion: 3,
-        }
-      })
+      return snap.docs.map((d) => toLeaderboardEntry(d.data() as LeaderboardDoc, d.id))
     } catch (error) {
       if (!isPermissionDenied(error)) throw error
 
-      // Fallback для проектов, где еще не добавлены правила/коллекция leaderboard.
-      const q = query(
-        collection(db, "user_profiles"),
-        orderBy("coins", "desc"),
-        firestoreLimit(topN),
-      )
-      const snap = await getDocs(q)
-      return snap.docs.map((d) => {
-        const data = d.data() as UserProfile
-        return {
-          userId: data.userId,
-          nickname: data.nickname?.trim() || data.userId.slice(0, 8),
-          scoreCoins: toCoinsLeaderboardScore(data.coins),
-          cardCount: data.cardCount ?? 0,
-          updatedAtMs: data.updatedAtMs ?? 0,
-          scoreVersion: 3,
-        }
-      })
+      return fetchLeaderboardFromProfiles(topN)
     }
   } catch {
     return []

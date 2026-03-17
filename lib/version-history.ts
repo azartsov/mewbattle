@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: VersionHistoryEntry[] = [
   {
+    version: "0.217",
+    date: "2026-03-18",
+    summary: {
+      ru: "Таблица рекордов теперь считает итог как монеты плюс суммарная стоимость всех карт, показывает формулу расчёта, а после победы сообщает о новом рекорде, месте игрока и новом итоговом результате.",
+      en: "The leaderboard now uses coins plus the total value of all cards, shows the score formula, and after a win announces any new record along with the player's rank and new total result.",
+    },
+  },
+  {
     version: "0.215",
     date: "2026-03-18",
     summary: {

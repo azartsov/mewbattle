@@ -13,6 +13,16 @@ export const metadata: Metadata = {
   title: "MewBattle - Card RPG Arena",
   description: "Collect cat cards, build decks, open boosters and battle bosses",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+    shortcut: "/icons/icon-192x192.png",
+    apple: [
+      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
+    ],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -38,9 +48,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
-      </head>
       <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased`}>
         <MewI18nProvider>
           <AuthProvider>

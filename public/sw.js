@@ -1,4 +1,4 @@
-const APP_VERSION = "0.215";
+const APP_VERSION = "0.217";
 const CACHE_NAME = `mewbattle-v${APP_VERSION}`;
 
 // Pre-cache the shell on install

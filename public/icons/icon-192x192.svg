@@ -1,56 +1,41 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 512 512" role="img" aria-label="Dartboard icon">
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 512 512" role="img" aria-label="MewBattle cat icon">
   <defs>
-    <radialGradient id="bg" cx="50%" cy="45%" r="60%">
-      <stop offset="0%" stop-color="#1f2937" />
-      <stop offset="100%" stop-color="#0b1020" />
-    </radialGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#000" flood-opacity="0.45" />
-    </filter>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#2563eb" />
+    </linearGradient>
+    <linearGradient id="fur" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fde7cf" />
+      <stop offset="100%" stop-color="#efc7a2" />
+    </linearGradient>
   </defs>
 
-  <rect width="512" height="512" rx="110" fill="url(#bg)" />
+  <rect width="512" height="512" rx="120" fill="url(#bg)" />
+  <circle cx="256" cy="256" r="210" fill="rgba(255,255,255,0.08)" />
 
-  <g transform="translate(256 256)" filter="url(#shadow)">
-    <circle r="190" fill="#f8fafc" />
-    <circle r="175" fill="#111827" />
+  <g transform="translate(256 258)">
+    <path d="M-126 -82 L-76 -190 L-12 -96 Z" fill="url(#fur)" />
+    <path d="M126 -82 L76 -190 L12 -96 Z" fill="url(#fur)" />
+    <path d="M-110 -88 L-76 -160 L-34 -94 Z" fill="#f59e0b" opacity="0.55" />
+    <path d="M110 -88 L76 -160 L34 -94 Z" fill="#f59e0b" opacity="0.55" />
 
-    <g>
-      <path d="M0,-175 A175,175 0 0,1 54.08,-166.43 L45.42,-139.81 A145,145 0 0,0 0,-145Z" fill="#dc2626" />
-      <path d="M54.08,-166.43 A175,175 0 0,1 102.86,-141.57 L86.1,-118.54 A145,145 0 0,0 45.42,-139.81Z" fill="#065f46" />
-      <path d="M102.86,-141.57 A175,175 0 0,1 141.57,-102.86 L118.54,-86.1 A145,145 0 0,0 86.1,-118.54Z" fill="#dc2626" />
-      <path d="M141.57,-102.86 A175,175 0 0,1 166.43,-54.08 L139.81,-45.42 A145,145 0 0,0 118.54,-86.1Z" fill="#065f46" />
-      <path d="M166.43,-54.08 A175,175 0 0,1 175,0 L145,0 A145,145 0 0,0 139.81,-45.42Z" fill="#dc2626" />
-      <path d="M175,0 A175,175 0 0,1 166.43,54.08 L139.81,45.42 A145,145 0 0,0 145,0Z" fill="#065f46" />
-      <path d="M166.43,54.08 A175,175 0 0,1 141.57,102.86 L118.54,86.1 A145,145 0 0,0 139.81,45.42Z" fill="#dc2626" />
-      <path d="M141.57,102.86 A175,175 0 0,1 102.86,141.57 L86.1,118.54 A145,145 0 0,0 118.54,86.1Z" fill="#065f46" />
-      <path d="M102.86,141.57 A175,175 0 0,1 54.08,166.43 L45.42,139.81 A145,145 0 0,0 86.1,118.54Z" fill="#dc2626" />
-      <path d="M54.08,166.43 A175,175 0 0,1 0,175 L0,145 A145,145 0 0,0 45.42,139.81Z" fill="#065f46" />
-      <path d="M0,175 A175,175 0 0,1 -54.08,166.43 L-45.42,139.81 A145,145 0 0,0 0,145Z" fill="#dc2626" />
-      <path d="M-54.08,166.43 A175,175 0 0,1 -102.86,141.57 L-86.1,118.54 A145,145 0 0,0 -45.42,139.81Z" fill="#065f46" />
-      <path d="M-102.86,141.57 A175,175 0 0,1 -141.57,102.86 L-118.54,86.1 A145,145 0 0,0 -86.1,118.54Z" fill="#dc2626" />
-      <path d="M-141.57,102.86 A175,175 0 0,1 -166.43,54.08 L-139.81,45.42 A145,145 0 0,0 -118.54,86.1Z" fill="#065f46" />
-      <path d="M-166.43,54.08 A175,175 0 0,1 -175,0 L-145,0 A145,145 0 0,0 -139.81,45.42Z" fill="#dc2626" />
-      <path d="M-175,0 A175,175 0 0,1 -166.43,-54.08 L-139.81,-45.42 A145,145 0 0,0 -145,0Z" fill="#065f46" />
-      <path d="M-166.43,-54.08 A175,175 0 0,1 -141.57,-102.86 L-118.54,-86.1 A145,145 0 0,0 -139.81,-45.42Z" fill="#dc2626" />
-      <path d="M-141.57,-102.86 A175,175 0 0,1 -102.86,-141.57 L-86.1,-118.54 A145,145 0 0,0 -118.54,-86.1Z" fill="#065f46" />
-      <path d="M-102.86,-141.57 A175,175 0 0,1 -54.08,-166.43 L-45.42,-139.81 A145,145 0 0,0 -86.1,-118.54Z" fill="#dc2626" />
-      <path d="M-54.08,-166.43 A175,175 0 0,1 0,-175 L0,-145 A145,145 0 0,0 -45.42,-139.81Z" fill="#065f46" />
-    </g>
+    <ellipse cx="0" cy="16" rx="144" ry="132" fill="url(#fur)" />
+    <ellipse cx="0" cy="42" rx="108" ry="88" fill="#fff7ed" opacity="0.82" />
 
-    <circle r="145" fill="#f8fafc" />
-    <circle r="130" fill="#111827" />
+    <circle cx="-56" cy="-6" r="16" fill="#0f172a" />
+    <circle cx="56" cy="-6" r="16" fill="#0f172a" />
+    <circle cx="-51" cy="-11" r="5" fill="#ffffff" opacity="0.95" />
+    <circle cx="61" cy="-11" r="5" fill="#ffffff" opacity="0.95" />
 
-    <circle r="30" fill="#065f46" />
-    <circle r="14" fill="#dc2626" />
+    <path d="M0 18 C-14 18 -22 28 -22 38 C-22 48 -12 56 0 56 C12 56 22 48 22 38 C22 28 14 18 0 18 Z" fill="#ef4444" />
+    <path d="M0 54 L-28 78" stroke="#f8fafc" stroke-width="9" stroke-linecap="round" />
+    <path d="M0 54 L28 78" stroke="#f8fafc" stroke-width="9" stroke-linecap="round" />
 
-    <g fill="none" stroke="#e5e7eb" stroke-width="2" opacity="0.7">
-      <circle r="175" />
-      <circle r="145" />
-      <circle r="130" />
-      <circle r="30" />
-      <line x1="0" y1="-175" x2="0" y2="175" />
-      <line x1="-175" y1="0" x2="175" y2="0" />
-    </g>
+    <path d="M-30 42 L-114 24" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" opacity="0.92" />
+    <path d="M-30 56 L-122 58" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" opacity="0.92" />
+    <path d="M-30 70 L-114 92" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" opacity="0.92" />
+    <path d="M30 42 L114 24" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" opacity="0.92" />
+    <path d="M30 56 L122 58" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" opacity="0.92" />
+    <path d="M30 70 L114 92" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" opacity="0.92" />
   </g>
 </svg>

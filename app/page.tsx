@@ -33,7 +33,7 @@ import {
   syncLeaderboardAfterBattle,
 } from "@/lib/mew-firestore"
 import type { BattleLogEntry, Deck, FighterCard, MewCard, UserCard, UserProfile } from "@/lib/mew-types"
-import type { BoosterOpenResult, DeckSlotKey, BoosterOffer, LeaderboardEntry, UserBattleLog } from "@/lib/mew-firestore"
+import type { BoosterOpenResult, DeckSlotKey, BoosterOffer, LeaderboardEntry, LeaderboardSyncResult, UserBattleLog } from "@/lib/mew-firestore"
 import { CardCollection } from "@/components/mew/card-collection"
 import { DeckBuilder } from "@/components/mew/deck-builder"
 import { UnsavedDeckDialog } from "@/components/mew/unsaved-deck-dialog"
@@ -712,8 +712,17 @@ export default function MewBattlePage() {
     return computeRewardForDeckScore(currentScore)
   }, [computeRewardForDeckScore, selectedDeckSlot, deckPowerBySlot])
 
+  const formatLeaderboardScoreBreakdown = useCallback((entry: Pick<LeaderboardEntry, "coinsValue" | "cardsValue"> | Pick<LeaderboardSyncResult, "coinsValue" | "cardsValue">) => {
+    return `${t.lbScoreFormula}: ${entry.coinsValue} + ${entry.cardsValue}`
+  }, [t.lbScoreFormula])
+
   const saveBattle = useCallback(async (winnerId: string, bossId: string, log: BattleLogEntry[], hpBonus = 0) => {
-    if (!userId) return 0
+    if (!userId) {
+      return {
+        rewardCoins: 0,
+        leaderboardResult: null,
+      }
+    }
 
     const didWin = winnerId === "player"
     const baseReward = didWin ? pendingBattleWinReward : 0
@@ -731,19 +740,27 @@ export default function MewBattlePage() {
         createdAt: Date.now(),
       })
 
-      await syncLeaderboardAfterBattle(userId, user?.email ?? undefined)
+      const leaderboardResult = didWin
+        ? await syncLeaderboardAfterBattle(userId, user?.email ?? undefined)
+        : null
 
       if (didWin && hpBonus > 0) {
         setMessage(`${t.battleSavedWin}: +${settled} (${t.battleBase}: ${baseReward} + ${t.battleHpBonus}: +${hpBonus})`)
       } else {
         setMessage(`${didWin ? t.battleSavedWin : t.battleSavedLoss}: +${settled}`)
       }
-      return settled
+      return {
+        rewardCoins: settled,
+        leaderboardResult,
+      }
     } catch {
       setMessage(didWin
         ? `${t.battleSavedWin}: +${totalReward}`
         : t.battleSavedLoss)
-      return totalReward
+      return {
+        rewardCoins: totalReward,
+        leaderboardResult: null,
+      }
     } finally {
       setSavingGameState(false)
     }
@@ -1381,7 +1398,12 @@ export default function MewBattlePage() {
                     >
                       <td className="py-1 text-muted-foreground">{idx + 1}</td>
                       <td className="py-1">{entry.nickname}</td>
-                      <td className="py-1 text-right">{entry.scoreCoins}</td>
+                      <td className="py-1 text-right">
+                        <div className="space-y-0.5">
+                          <p>{entry.totalScore}</p>
+                          <p className="text-[10px] leading-tight text-muted-foreground">{formatLeaderboardScoreBreakdown(entry)}</p>
+                        </div>
+                      </td>
                       <td className="py-1 text-right">{entry.cardCount}</td>
                       <td className="py-1 text-right text-xs text-muted-foreground">
                         {entry.updatedAtMs ? new Date(entry.updatedAtMs).toLocaleDateString() : "—"}

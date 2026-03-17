@@ -150,6 +150,11 @@ type MewTranslations = {
   lbColScore: string
   lbColCards: string
   lbColDate: string
+  lbScoreFormula: string
+  leaderboardNewRecord: string
+  leaderboardNewRecordMessage: string
+  leaderboardPlace: string
+  leaderboardTotalScore: string
   rewardInverseTip: string
   battleHpBonus: string
   battleBase: string
@@ -339,9 +344,14 @@ const translations: Record<MewLanguage, MewTranslations> = {
     leaderboardTitle: "Top Players",
     leaderboardEmpty: "No players on the leaderboard yet.",
     lbColNickname: "Player",
-    lbColScore: "Coins",
+    lbColScore: "Total",
     lbColCards: "Cards",
     lbColDate: "Date",
+    lbScoreFormula: "Score = coins + total card value",
+    leaderboardNewRecord: "New leaderboard result",
+    leaderboardNewRecordMessage: "This victory raised your best leaderboard result.",
+    leaderboardPlace: "Current place",
+    leaderboardTotalScore: "Total result",
     rewardInverseTip: "Weaker deck -> higher reward (inversely proportional to deck strength)",
     battleHpBonus: "HP Bonus",
     battleBase: "Base",
@@ -529,9 +539,14 @@ const translations: Record<MewLanguage, MewTranslations> = {
     leaderboardTitle: "Топ игроков",
     leaderboardEmpty: "В таблице пока нет игроков.",
     lbColNickname: "Игрок",
-    lbColScore: "Монеты",
+    lbColScore: "Итог",
     lbColCards: "Карты",
     lbColDate: "Дата",
+    lbScoreFormula: "Итог = монеты + суммарная стоимость всех карт",
+    leaderboardNewRecord: "Новый рекорд в таблице",
+    leaderboardNewRecordMessage: "Эта победа улучшила ваш лучший результат в таблице рекордов.",
+    leaderboardPlace: "Текущее место",
+    leaderboardTotalScore: "Итоговый результат",
     rewardInverseTip: "Слабее колода -> выше награда (обратно пропорционально силе)",
     battleHpBonus: "Бонус ОЗ",
     battleBase: "База",
