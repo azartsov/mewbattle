@@ -2,28 +2,31 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
-// Read current version from version.ts
 const versionPath = path.join(__dirname, '../lib/version.ts');
 const serviceWorkerPath = path.join(__dirname, '../public/sw.js');
 const versionManifestPath = path.join(__dirname, '../public/version.json');
-const versionContent = fs.readFileSync(versionPath, 'utf-8');
+const repoRoot = path.join(__dirname, '..');
+const VERSION_OFFSET = 190;
 
-// Extract current minor version
-const versionMatch = versionContent.match(/export const APP_VERSION = "0\.(\d+)"/);
-let minorVersion = 0;
+const gitCommitCount = Number.parseInt(
+  execSync('git rev-list --count HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim(),
+  10,
+);
+const gitShortHash = execSync('git rev-parse --short=8 HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim();
 
-if (versionMatch) {
-  minorVersion = parseInt(versionMatch[1], 10);
+if (!Number.isFinite(gitCommitCount) || gitCommitCount <= 0) {
+  throw new Error('Could not derive git commit count for version generation');
 }
 
-// Increment minor version
-minorVersion++;
+const minorVersion = VERSION_OFFSET + gitCommitCount;
 
-// Write updated version
 const newVersionContent = `// Application version
-// Format: 0.MINOR where MINOR increments with each build
+// Format: 0.(VERSION_OFFSET + git commit count)
 export const APP_VERSION = "0.${minorVersion}"
+export const APP_GIT_COMMIT_COUNT = ${gitCommitCount}
+export const APP_GIT_HASH = "${gitShortHash}"
 `;
 
 fs.writeFileSync(versionPath, newVersionContent, 'utf-8');
@@ -41,8 +44,8 @@ if (newServiceWorkerContent === serviceWorkerContent) {
 fs.writeFileSync(serviceWorkerPath, newServiceWorkerContent, 'utf-8');
 fs.writeFileSync(
   versionManifestPath,
-  `${JSON.stringify({ version: `0.${minorVersion}`, generatedAt: new Date().toISOString() }, null, 2)}\n`,
+  `${JSON.stringify({ version: `0.${minorVersion}`, gitCommitCount, gitHash: gitShortHash, generatedAt: new Date().toISOString() }, null, 2)}\n`,
   'utf-8'
 );
 
-console.log(`✓ Version updated to 0.${minorVersion}`);
+console.log(`✓ Version updated to 0.${minorVersion} (git ${gitCommitCount}, ${gitShortHash})`);
