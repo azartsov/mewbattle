@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Image from "next/image"
-import { BookOpen, CircleHelp, Crown, Download, Gem, Gift, LogOut, MoreVertical, PawPrint, Play, RotateCcw, Shield, Sparkles, Swords, TrendingUp, Trophy, X } from "lucide-react"
+import { BookOpen, CircleHelp, Crown, Download, Gem, Gift, Languages, LogOut, MoreVertical, PawPrint, Play, RotateCcw, Shield, Sparkles, Swords, TrendingUp, Trophy, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -161,7 +161,7 @@ function AuthScreen() {
 
 export default function MewBattlePage() {
   const { user, isGuest, loading, signOut } = useAuth()
-  const { t, language } = useMewI18n()
+  const { t, language, setLanguage } = useMewI18n()
   const [cardDesign, setCardDesign] = useState<CardDesignVariant>(DEFAULT_CARD_DESIGN)
   const [cardDesignReady, setCardDesignReady] = useState(false)
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
@@ -919,7 +919,7 @@ export default function MewBattlePage() {
           </div>
           <div className="flex items-start gap-2 sm:items-center">
             {profile && (
-              <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button type="button" className="rounded-full" aria-label={t.coinsTooltip}>
@@ -938,7 +938,6 @@ export default function MewBattlePage() {
                 </Tooltip>
               </div>
             )}
-            <LanguageToggle />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="icon" variant="ghost" className="h-8 w-8">
@@ -961,6 +960,10 @@ export default function MewBattlePage() {
                     {t.leaderboard}
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuItem onSelect={() => setLanguage(language === "en" ? "ru" : "en")}>
+                  <Languages className="h-4 w-4" />
+                  {language === "en" ? "RU" : "EN"}
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel>{t.cardDesign}</DropdownMenuLabel>
                 <DropdownMenuRadioGroup value={cardDesign} onValueChange={(value) => setCardDesign(normalizeCardDesign(value))}>
@@ -1191,18 +1194,6 @@ export default function MewBattlePage() {
               <div className="space-y-4">
                 <Card className="p-4 space-y-3">
                   <style>{`
-                    @keyframes battle-deck-choice-glow {
-                      0%, 100% {
-                        box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.18), inset 0 0 0 1px rgba(251, 191, 36, 0.18);
-                        border-color: rgba(251, 191, 36, 0.28);
-                        background: rgba(251, 191, 36, 0.04);
-                      }
-                      50% {
-                        box-shadow: 0 0 0 6px rgba(251, 191, 36, 0.06), 0 0 28px rgba(251, 191, 36, 0.22), inset 0 0 0 1px rgba(253, 224, 71, 0.42);
-                        border-color: rgba(253, 224, 71, 0.55);
-                        background: rgba(251, 191, 36, 0.1);
-                      }
-                    }
                     @keyframes battle-deck-choice-chip {
                       0%, 100% {
                         box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.18);
@@ -1215,16 +1206,13 @@ export default function MewBattlePage() {
                     }
                     @keyframes battle-action-button-glow {
                       0%, 100% {
-                        box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.18), 0 10px 24px rgba(0, 0, 0, 0.12);
+                        box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.18), 0 12px 26px rgba(0, 0, 0, 0.14);
                         filter: saturate(1);
                       }
                       50% {
                         box-shadow: 0 0 0 5px rgba(250, 204, 21, 0.08), 0 0 24px rgba(250, 204, 21, 0.24), 0 14px 30px rgba(0, 0, 0, 0.16);
                         filter: saturate(1.06);
                       }
-                    }
-                    .battle-deck-choice-glow {
-                      animation: battle-deck-choice-glow 1.45s ease-in-out infinite;
                     }
                     .battle-deck-choice-chip {
                       animation: battle-deck-choice-chip 1.2s ease-in-out infinite;
@@ -1288,7 +1276,7 @@ export default function MewBattlePage() {
 
                       <div className="space-y-2">
                         <p className="text-sm font-medium">{t.chooseBattleDeck}</p>
-                        <div className={waitingForBattleDeckChoice ? "battle-deck-choice-glow flex flex-wrap gap-2 rounded-2xl border p-2.5" : "flex flex-wrap gap-2"}>
+                        <div className={waitingForBattleDeckChoice ? "flex flex-wrap gap-2 rounded-2xl border p-2.5" : "flex flex-wrap gap-2"}>
                           {DECK_SLOT_KEYS.map((slotKey) => {
                             const slotDeck = decksBySlot.get(slotKey)
                             const availableCards = battleDeckCardsBySlot.get(slotKey)?.length ?? 0

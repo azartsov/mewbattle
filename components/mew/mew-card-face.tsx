@@ -190,9 +190,9 @@ export function MewCardFace({ card, owned, compact = false, previewCompact = fal
           )}
         </div>
 
-        <div className={cn("flex flex-nowrap items-center overflow-hidden font-medium", previewCompact ? "gap-1 text-[9px]" : "gap-1.5 text-[10px]")}>
-          <span className={badgeStyles.attackCompact}>ATK {card.attack}</span>
-          <span className={badgeStyles.healthCompact}>HP {card.health}</span>
+        <div className={cn("flex flex-nowrap items-center overflow-hidden font-medium", previewCompact ? "gap-0.5 text-[8px]" : "gap-1.5 text-[10px]")}>
+          <span className={cn(badgeStyles.attackCompact, previewCompact && "min-w-0 flex-1 justify-center px-1 py-0.5 text-[8px] tracking-tight")}>{previewCompact ? `A${card.attack}` : `ATK ${card.attack}`}</span>
+          <span className={cn(badgeStyles.healthCompact, previewCompact && "min-w-0 flex-1 justify-center px-1 py-0.5 text-[8px] tracking-tight")}>{previewCompact ? `HP${card.health}` : `HP ${card.health}`}</span>
         </div>
 
         <div className={cn("flex flex-wrap items-center", previewCompact ? "min-h-[16px] gap-1" : "min-h-[22px] gap-1.5")}>
