@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Image from "next/image"
-import { BookOpen, CircleHelp, Crown, Download, Gem, Gift, Languages, LogOut, MoreVertical, PawPrint, Play, RotateCcw, Shield, Sparkles, Swords, TrendingUp, Trophy, X } from "lucide-react"
+import { BookOpen, CircleHelp, Download, Gift, Languages, LogOut, MoreVertical, PawPrint, Play, RotateCcw, Swords, TrendingUp, Trophy, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -448,6 +448,12 @@ export default function MewBattlePage() {
     setTab(nextTab)
   }, [battleLocked, deckDirty, tab])
 
+  const handleSelectDeckSlot = useCallback((nextSlot: DeckSlotKey) => {
+    if (nextSlot === selectedDeckSlot) return
+
+    setSelectedDeckSlot(nextSlot)
+  }, [selectedDeckSlot])
+
   const handleUnsavedStay = useCallback(() => {
     setShowUnsavedDeckDialog(false)
     setPendingTabSwitch(null)
@@ -478,9 +484,10 @@ export default function MewBattlePage() {
     try {
       await handleSaveDeck(deckDraft.name, deckDraft.cardIds)
       setDeckDirty(false)
+      setDeckDraft(null)
       setShowUnsavedDeckDialog(false)
       setPendingTabSwitch(null)
-      setTab(nextTab)
+      if (nextTab) setTab(nextTab)
     } catch {
       setMessage("Failed to save deck")
     } finally {
@@ -525,8 +532,8 @@ export default function MewBattlePage() {
   }, [cards, loadData, profile?.coins, t.boosterNeedMoreCoins, t.boosterNotEnoughCoins, t.coins, t.openBooster, userId])
 
   const battleStatsSummary = useMemo(() => {
-    const wins = battleHistory.filter((entry) => entry.winnerId === "player").length
-    const losses = battleHistory.length - wins
+    const wins = profile?.wins ?? battleHistory.filter((entry) => entry.winnerId === "player").length
+    const losses = profile?.losses ?? Math.max(0, battleHistory.length - wins)
     const avgTurns = battleHistory.length > 0
       ? Math.round((battleHistory.reduce((acc, entry) => acc + Math.max(entry.turns, 1), 0) / battleHistory.length) * 10) / 10
       : 0
@@ -534,10 +541,12 @@ export default function MewBattlePage() {
     return {
       wins,
       losses,
+      streak: profile?.streak ?? 0,
+      earned: profile?.totalEarned ?? 0,
+      spent: profile?.totalSpent ?? 0,
       avgTurns,
-      recent: battleHistory.slice(0, 10),
     }
-  }, [battleHistory])
+  }, [battleHistory, profile?.losses, profile?.streak, profile?.totalEarned, profile?.totalSpent, profile?.wins])
 
   const localizedBoosterOffers = useMemo<BoosterOffer[]>(() => BOOSTER_OFFERS.map((offer) => {
     if (offer.id === "starter") {
@@ -560,20 +569,6 @@ export default function MewBattlePage() {
       subtitle: t.boosterRoyalSubtitle,
     }
   }), [t])
-
-  const battleTierMeta = useMemo(() => ({
-    common: { label: t.rarityCommon, icon: Shield, chipClass: "bg-slate-500/15 border-slate-400/35 text-slate-200" },
-    rare: { label: t.rarityRare, icon: Gem, chipClass: "bg-sky-500/15 border-sky-400/40 text-sky-200" },
-    epic: { label: t.rarityEpic, icon: Sparkles, chipClass: "bg-violet-500/15 border-violet-400/40 text-violet-200" },
-    legendary: { label: t.rarityLegendary, icon: Crown, chipClass: "bg-amber-500/15 border-amber-400/45 text-amber-100" },
-  }), [t])
-
-  const getBattleTier = (entry: UserBattleLog): "common" | "rare" | "epic" | "legendary" => {
-    if (entry.winnerId !== "player") return "common"
-    if (entry.turns <= 4) return "legendary"
-    if (entry.turns <= 7) return "epic"
-    return "rare"
-  }
 
   const handleSellCard = useCallback(async (card: MewCard) => {
     if (!userId) return
@@ -912,10 +907,7 @@ export default function MewBattlePage() {
             <div className="relative h-11 w-11 overflow-hidden rounded-2xl border border-primary/40 bg-primary/10">
               <Image src="/cards/cat_knight.svg" alt="Mew mascot" fill className="object-cover" />
             </div>
-            <div>
-              <h1 className='text-xl font-black tracking-wide text-primary font-["Trebuchet_MS","Verdana",sans-serif]'>{t.appTitle}</h1>
-              <p className="text-xs text-muted-foreground font-medium">{t.appSubtitle}</p>
-            </div>
+            <h1 className='text-xl font-black tracking-wide text-primary font-["Trebuchet_MS","Verdana",sans-serif]'>{t.appTitle}</h1>
           </div>
           <div className="flex items-start gap-2 sm:items-center">
             {profile && (
@@ -1029,43 +1021,28 @@ export default function MewBattlePage() {
 
         {profile && (
           <Card className="border-primary/25 bg-gradient-to-br from-primary/8 via-background to-emerald-500/8 px-2 py-1.5">
-            <div className='flex flex-wrap items-center gap-1 font-["Trebuchet_MS","Verdana",sans-serif]'>
-              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/35 bg-emerald-500/10 px-2 py-0.5 text-[11px] leading-none">
-                <span className="text-emerald-100/85">{t.wins}:</span>
-                <span className="font-semibold text-emerald-300">{profile.wins}</span>
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/35 bg-rose-500/10 px-2 py-0.5 text-[11px] leading-none">
-                <span className="text-rose-100/85">{t.losses}:</span>
-                <span className="font-semibold text-rose-300">{profile.losses}</span>
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/35 bg-sky-500/10 px-2 py-0.5 text-[11px] leading-none">
-                <span className="text-sky-100/85">{t.streak}:</span>
-                <span className="font-semibold text-sky-300">{profile.streak}</span>
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/35 bg-amber-500/10 px-2 py-0.5 text-[11px] leading-none text-amber-100">
-                <span className="text-amber-100/85">{t.earned}:</span>
-                <span className="font-semibold">{profile.totalEarned}</span>
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-zinc-500/35 bg-zinc-500/10 px-2 py-0.5 text-[11px] leading-none text-zinc-100">
-                <span className="text-zinc-200/85">{t.spent}:</span>
-                <span className="font-semibold">{profile.totalSpent}</span>
-              </span>
+            <div className='flex items-center justify-between gap-2 font-["Trebuchet_MS","Verdana",sans-serif]'>
+              <div>
+                <p className="text-sm font-semibold text-slate-100">{t.battleStatsHistory}</p>
+                <p className="text-[11px] text-slate-300/75">{t.avgTurns}: {battleStatsSummary.avgTurns}</p>
+              </div>
               <Dialog>
                 <DialogTrigger asChild>
                   <Button
-                    size="icon"
-                    className="ml-auto h-6 w-6 rounded-full bg-gradient-to-r from-sky-500 to-emerald-500 text-white shadow-md shadow-sky-500/20"
+                    size="sm"
+                    className="h-8 rounded-full bg-gradient-to-r from-sky-500 to-emerald-500 px-3 text-white shadow-md shadow-sky-500/20"
                     aria-label={t.statsHistory}
                     title={t.statsHistory}
                   >
-                    <TrendingUp className="h-3 w-3" />
+                    <TrendingUp className="h-3.5 w-3.5" />
+                    {t.statsHistory}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
                   <DialogHeader>
                     <DialogTitle className='font-["Trebuchet_MS","Verdana",sans-serif] text-amber-100'>{t.battleStatsHistory}</DialogTitle>
                   </DialogHeader>
-                  <div className='grid grid-cols-3 gap-1.5 text-sm font-["Trebuchet_MS","Verdana",sans-serif]'>
+                  <div className='grid grid-cols-2 gap-2 text-sm font-["Trebuchet_MS","Verdana",sans-serif] md:grid-cols-3'>
                     <Card className="p-1.5 text-center border-emerald-500/35 bg-gradient-to-br from-emerald-500/12 to-emerald-500/0">
                       <p className="text-xs text-emerald-100/80">{t.wins}</p>
                       <p className="text-base font-bold leading-none text-emerald-300">{battleStatsSummary.wins}</p>
@@ -1078,41 +1055,18 @@ export default function MewBattlePage() {
                       <p className="text-xs text-sky-100/80">{t.avgTurns}</p>
                       <p className="text-base font-bold leading-none text-sky-300">{battleStatsSummary.avgTurns}</p>
                     </Card>
-                  </div>
-
-                  <div className='max-h-[68vh] space-y-1 overflow-auto pr-1 font-["Trebuchet_MS","Verdana",sans-serif]'>
-                    {battleStatsSummary.recent.map((entry) => {
-                      const won = entry.winnerId === "player"
-                      const tier = getBattleTier(entry)
-                      const tierInfo = battleTierMeta[tier]
-                      const TierIcon = tierInfo.icon
-                      return (
-                        <Card
-                          key={entry.id}
-                          className={`p-1.5 border ${won ? "border-emerald-500/35 bg-gradient-to-r from-emerald-500/12 to-transparent" : "border-rose-500/35 bg-gradient-to-r from-rose-500/12 to-transparent"}`}
-                        >
-                          <div className="flex items-center justify-between gap-2 text-xs">
-                            <div className="flex items-center gap-2">
-                              <span className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[11px] font-semibold leading-none ${won ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-200" : "border-rose-400/50 bg-rose-500/15 text-rose-200"}`}>
-                                {won ? t.victory : t.defeat}
-                              </span>
-                              <span className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[11px] leading-none ${tierInfo.chipClass}`}>
-                                <TierIcon className="h-2.5 w-2.5" />
-                                {tierInfo.label}
-                              </span>
-                              <span className="inline-flex items-center rounded-full border border-amber-400/45 bg-amber-500/15 px-1.5 py-0.5 text-[11px] leading-none text-amber-100">
-                                {t.battleReward}: +{entry.rewardCoins}
-                              </span>
-                            </div>
-                            <span className="text-[11px] leading-none text-slate-300/80">{new Date(entry.createdAtMs).toLocaleString()}</span>
-                          </div>
-                          <p className="mt-1 text-[11px] leading-tight text-slate-300/80">
-                            {t.battleBoss}: {entry.bossId ?? "unknown"} | {t.battleTurns}: {entry.turns}
-                          </p>
-                        </Card>
-                      )
-                    })}
-                    {battleStatsSummary.recent.length === 0 && <p className="text-sm text-slate-300/70">{t.noBattleHistory}</p>}
+                    <Card className="p-1.5 text-center border-cyan-500/35 bg-gradient-to-br from-cyan-500/12 to-cyan-500/0">
+                      <p className="text-xs text-cyan-100/80">{t.streak}</p>
+                      <p className="text-base font-bold leading-none text-cyan-300">{battleStatsSummary.streak}</p>
+                    </Card>
+                    <Card className="p-1.5 text-center border-amber-500/35 bg-gradient-to-br from-amber-500/12 to-amber-500/0">
+                      <p className="text-xs text-amber-100/80">{t.earned}</p>
+                      <p className="text-base font-bold leading-none text-amber-300">{battleStatsSummary.earned}</p>
+                    </Card>
+                    <Card className="p-1.5 text-center border-zinc-500/35 bg-gradient-to-br from-zinc-500/12 to-zinc-500/0">
+                      <p className="text-xs text-zinc-200/80">{t.spent}</p>
+                      <p className="text-base font-bold leading-none text-zinc-200">{battleStatsSummary.spent}</p>
+                    </Card>
                   </div>
                 </DialogContent>
               </Dialog>
@@ -1165,19 +1119,25 @@ export default function MewBattlePage() {
                 cards={cards}
                 userCards={userCards}
                 maxDeckSize={profile?.maxDeckSize ?? 3}
-                deckButtons={[
-                  { slot: "deck1", label: t.deckOne },
-                  { slot: "deck2", label: t.deckTwo },
-                  { slot: "deck3", label: t.deckThree },
-                ]}
+                deckButtons={DECK_SLOT_KEYS.map((slot) => ({
+                  slot,
+                  label: decksBySlot.get(slot)?.deckName ?? getDefaultDeckName(slot),
+                  totalHp: (battleDeckCardsBySlot.get(slot) ?? []).reduce((sum, card) => sum + card.health, 0),
+                  avgAttack: (() => {
+                    const deckCards = battleDeckCardsBySlot.get(slot) ?? []
+                    if (deckCards.length === 0) return 0
+                    return Math.round((deckCards.reduce((sum, card) => sum + card.attack, 0) / deckCards.length) * 10) / 10
+                  })(),
+                  totalValue: (battleDeckCardsBySlot.get(slot) ?? []).reduce((sum, card) => sum + getCardSellPrice(card), 0),
+                  potentialReward: computeRewardForDeckScore(deckPowerBySlot.get(slot) ?? 0),
+                }))}
                 selectedDeckSlot={selectedDeckSlot}
                 initialDeckName={selectedDeck?.deckName ?? getDefaultDeckName(selectedDeckSlot)}
                 initialDeckCardIds={selectedDeckCardIds}
-                onSelectDeckSlot={setSelectedDeckSlot}
+                onSelectDeckSlot={handleSelectDeckSlot}
                 onSaveDeck={handleSaveDeck}
                 onDraftChange={handleDeckDraftChange}
                 onDirtyChange={setDeckDirty}
-                potentialReward={deckBuilderPotentialReward}
               />
             )}
             {tab === "boosters" && userId && (
@@ -1488,7 +1448,9 @@ export default function MewBattlePage() {
         open={showUnsavedDeckDialog}
         onOpenChange={(open) => {
           setShowUnsavedDeckDialog(open)
-          if (!open) setPendingTabSwitch(null)
+          if (!open) {
+            setPendingTabSwitch(null)
+          }
         }}
         title={t.deckUnsavedTitle}
         description={t.deckUnsavedDesc}

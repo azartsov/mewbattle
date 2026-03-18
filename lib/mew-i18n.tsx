@@ -68,6 +68,7 @@ type MewTranslations = {
   selling: string
   cannotSell: string
   collectionTitle: string
+  myCollectionTitle: string
   totalCardsValue: string
   coinsTooltip: string
   totalCardsValueTooltip: string
@@ -250,8 +251,8 @@ const translations: Record<MewLanguage, MewTranslations> = {
     boosterNotEnoughCoins: "Not enough coins for this booster.",
     boosterNeedMoreCoins: "Need",
     latestDrop: "Latest drop",
-    statsHistory: "Stats History",
-    battleStatsHistory: "Battle Stats History",
+    statsHistory: "Battle Statistics",
+    battleStatsHistory: "Battle Statistics",
     avgTurns: "Avg turns",
     noBattleHistory: "No battle history yet.",
     battleBoss: "Boss",
@@ -271,6 +272,7 @@ const translations: Record<MewLanguage, MewTranslations> = {
     selling: "Selling...",
     cannotSell: "Keep at least one copy of each card.",
     collectionTitle: "My Cats",
+    myCollectionTitle: "My Collection",
     totalCardsValue: "Card value",
     coinsTooltip: "Number of coins",
     totalCardsValueTooltip: "Total value of all player cards",
@@ -451,8 +453,8 @@ const translations: Record<MewLanguage, MewTranslations> = {
     boosterNotEnoughCoins: "Для этого бустера не хватает монет.",
     boosterNeedMoreCoins: "Не хватает",
     latestDrop: "Последний набор",
-    statsHistory: "История статистики",
-    battleStatsHistory: "История боевой статистики",
+    statsHistory: "Боевая статистика",
+    battleStatsHistory: "Боевая статистика",
     avgTurns: "Средние ходы",
     noBattleHistory: "История боев пока пуста.",
     battleBoss: "Босс",
@@ -472,6 +474,7 @@ const translations: Record<MewLanguage, MewTranslations> = {
     selling: "Продажа...",
     cannotSell: "Нужно оставить минимум одну копию карты.",
     collectionTitle: "Мои коты",
+    myCollectionTitle: "Моя коллекция",
     totalCardsValue: "Стоимость карт",
     coinsTooltip: "Количество монет",
     totalCardsValueTooltip: "Стоимость всех карт игрока",

@@ -265,7 +265,6 @@ export function PreAuthUkiyoeSplash({ onEnter, onShowVersionHistory }: PreAuthUk
             <p className="text-[11px] text-amber-200/70">— {t.catCodexAttribution}</p>
           </div>
 
-          <p className="mt-2 text-xs uppercase tracking-[0.18em] text-amber-200/80">{t.splashHint}</p>
           <Button
             className="mt-3 h-8 rounded-full bg-amber-500 px-5 text-xs font-semibold text-slate-950 hover:bg-amber-400"
             onClick={onEnter}
