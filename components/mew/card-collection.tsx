@@ -10,6 +10,7 @@ import { useMewI18n } from "@/lib/mew-i18n"
 interface CardCollectionProps {
   cards: MewCard[]
   userCards: UserCard[]
+  totalCardsValue: number
   recentlyAddedCardCounts?: Map<string, number>
   onSellCard: (card: MewCard) => Promise<void>
   sellingCardId: string | null
@@ -19,6 +20,7 @@ interface CardCollectionProps {
 export function CardCollection({
   cards,
   userCards,
+  totalCardsValue,
   recentlyAddedCardCounts,
   onSellCard,
   sellingCardId,
@@ -37,7 +39,10 @@ export function CardCollection({
 
   return (
     <div className="space-y-3">
-      <h2 className="text-lg font-semibold">{t.collectionTitle}</h2>
+      <div className="flex items-center gap-2">
+        <h2 className="text-lg font-semibold">{t.collectionTitle}</h2>
+        <CoinPawBadge amount={totalCardsValue} compact className="border-sky-500/30 bg-sky-500/10 text-sky-100" />
+      </div>
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 justify-items-center">
         {orderedCards.map((card) => {
           const qty = qtyByCard.get(card.id) ?? 0

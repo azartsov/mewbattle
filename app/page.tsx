@@ -1153,6 +1153,7 @@ export default function MewBattlePage() {
               <CardCollection
                 cards={cards}
                 userCards={userCards}
+                totalCardsValue={totalCardsValue}
                 recentlyAddedCardCounts={recentlyDroppedCounts}
                 onSellCard={handleSellCard}
                 sellingCardId={sellingCardId}
