@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Check, Pencil, Save } from "lucide-react"
+import { Check, Pencil, Save, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -150,8 +150,9 @@ export function DeckBuilder({
   const deckCardHeight = 228
   const deckRowGap = 16
   const panelBodyHeight = maxDeckSize * deckCardHeight + Math.max(0, maxDeckSize - 1) * deckRowGap
-  const panelHeight = panelBodyHeight + 92
-  const deckCardClassName = "w-[142px]"
+  const panelHeaderHeight = 148
+  const panelHeight = panelBodyHeight + panelHeaderHeight
+  const deckCardClassName = "w-full max-w-[156px]"
 
   const metricLeaders = useMemo(() => {
     const totalHp = Math.max(...deckButtons.map((deckButton) => deckButton.totalHp), 0)
@@ -335,11 +336,12 @@ export function DeckBuilder({
                 style={{ minHeight: `${deckCardHeight}px` }}
               >
                 {deckCards[index] ? (
-                  <div className="flex items-start justify-between gap-2">
+                  <div className="relative flex justify-center">
                     <MewCardFace card={deckCards[index]} previewCompact className={deckCardClassName} />
                     <Button
-                      size="xs"
+                      size="icon"
                       variant="ghost"
+                      className="absolute right-1 top-1 z-10 h-6 w-6 rounded-full border border-white/15 bg-black/55 text-white hover:bg-black/75"
                       onClick={(event) => {
                         event.preventDefault()
                         event.stopPropagation()
@@ -349,8 +351,10 @@ export function DeckBuilder({
                           return next
                         })
                       }}
+                      aria-label={t.remove}
+                      title={t.remove}
                     >
-                      {t.remove}
+                      <X className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 ) : (

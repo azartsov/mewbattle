@@ -44,6 +44,38 @@ function summarizeEntries(entries: VersionHistoryEntry[], language: "ru" | "en")
     })
 }
 
+function compactSummaryLine(summary: string, language: "ru" | "en") {
+  const normalized = summary.replace(/[.;]\s*$/u, "").trim()
+  const firstClause = normalized.split(/[,;:]/u)[0]?.trim() ?? normalized
+  const maxLength = language === "ru" ? 52 : 58
+
+  if (firstClause.length <= maxLength) return firstClause
+  return `${firstClause.slice(0, maxLength).trimEnd()}...`
+}
+
+function summarizeDayCompact(entries: VersionHistoryEntry[], language: "ru" | "en") {
+  const lines = summarizeEntries(entries, language)
+  const compactLines = lines.map((line) => compactSummaryLine(line, language))
+  const visible = compactLines.slice(0, 3)
+  const hiddenCount = Math.max(0, compactLines.length - visible.length)
+
+  if (visible.length === 0) {
+    return language === "ru" ? "Изменения за день." : "Daily changes."
+  }
+
+  const suffix = hiddenCount > 0
+    ? language === "ru"
+      ? ` + ещё ${hiddenCount}`
+      : ` + ${hiddenCount} more`
+    : ""
+
+  const prefix = language === "ru"
+    ? `${entries.length} изм.: `
+    : `${entries.length} changes: `
+
+  return `${prefix}${visible.join(", ")}${suffix}.`
+}
+
 export function VersionHistoryDialog({ open, onOpenChange }: VersionHistoryDialogProps) {
   const { language, t } = useMewI18n()
   const dateGroups = groupVersionHistoryByDate(VERSION_HISTORY)
@@ -67,6 +99,7 @@ export function VersionHistoryDialog({ open, onOpenChange }: VersionHistoryDialo
                 : `v${firstVersion} - v${lastVersion}`
               const dateLabel = formatLocalizedDate(group.date, language)
               const summaryLines = summarizeEntries(group.entries, language)
+              const compactDaySummary = summarizeDayCompact(group.entries, language)
               const isExpanded = !!expandedDates[group.date]
               const visibleSummaryLines = isExpanded ? summaryLines : summaryLines.slice(0, 5)
               const hasHiddenLines = summaryLines.length > 5
@@ -82,14 +115,20 @@ export function VersionHistoryDialog({ open, onOpenChange }: VersionHistoryDialo
                     </span>
                     <span className="text-xs text-muted-foreground">{versionLabel}</span>
                   </div>
-                  <div className="mt-3 space-y-1.5">
-                    {visibleSummaryLines.map((summaryLine) => (
-                      <p key={summaryLine} className="text-sm leading-relaxed text-slate-200/90">
-                        {summaryLine}.
-                      </p>
-                    ))}
-                  </div>
-                  {hasHiddenLines && !isExpanded && (
+                  {!isExpanded ? (
+                    <p className="mt-3 text-sm leading-relaxed text-slate-200/90">
+                      {compactDaySummary}
+                    </p>
+                  ) : (
+                    <div className="mt-3 space-y-1.5">
+                      {visibleSummaryLines.map((summaryLine) => (
+                        <p key={summaryLine} className="text-sm leading-relaxed text-slate-200/90">
+                          {summaryLine}.
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                  {(summaryLines.length > 1 || hasHiddenLines) && !isExpanded && (
                     <div className="mt-3">
                       <Button
                         type="button"
@@ -107,7 +146,7 @@ export function VersionHistoryDialog({ open, onOpenChange }: VersionHistoryDialo
                       </Button>
                     </div>
                   )}
-                  {hasHiddenLines && isExpanded && (
+                  {(summaryLines.length > 1 || hasHiddenLines) && isExpanded && (
                     <div className="mt-3 flex justify-start">
                       <Button
                         type="button"
