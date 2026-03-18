@@ -11,6 +11,30 @@ export interface VersionHistoryEntry {
 
 const STATIC_VERSION_HISTORY: VersionHistoryEntry[] = [
   {
+    version: "0.239",
+    date: "2026-03-19",
+    summary: {
+      ru: "Перед боем под кнопками выбора колод теперь показываются параметры колоды, награда перенесена на экран победы, а на экране поражения явно выводится потеря 25 монет за вход в бой.",
+      en: "Before battle, deck buttons now show deck metrics, the reward moved to the victory screen, and the defeat screen now explicitly shows the 25-coin battle fee loss.",
+    },
+  },
+  {
+    version: "0.237",
+    date: "2026-03-19",
+    summary: {
+      ru: "В меню рядом с номером версии теперь показывается короткий git hash, чтобы проще сверять, какой коммит реально развернут на проде.",
+      en: "The menu now shows the short git hash next to the version so it is easier to verify which commit is actually deployed in production.",
+    },
+  },
+  {
+    version: "0.235",
+    date: "2026-03-19",
+    summary: {
+      ru: "Исправлена логика версий на проде: Vercel и CI теперь берут уже закоммиченные version metadata вместо пересчета commit count из урезанной git-истории сборки.",
+      en: "Fixed production versioning: Vercel and CI now use committed version metadata instead of recalculating commit count from shallow build-time git history.",
+    },
+  },
+  {
     version: "0.223",
     date: "2026-03-19",
     summary: {
@@ -293,10 +317,15 @@ const latestSameDayEntry = STATIC_VERSION_HISTORY.find((entry) => entry.date ===
 const autoCurrentVersionEntry: VersionHistoryEntry = {
   version: APP_VERSION,
   date: effectiveBuildDate,
-  summary: latestSameDayEntry?.summary ?? {
-    ru: `Текущая сборка приложения синхронизирована с git-ревизией ${APP_GIT_HASH}. Для этой версии ещё не добавлено отдельное описание изменений.`,
-    en: `The current app build is synced with git revision ${APP_GIT_HASH}. A dedicated changelog entry has not been added for this version yet.`,
-  },
+  summary: latestSameDayEntry
+    ? {
+        ru: `Сборка v${APP_VERSION} синхронизирована с git-ревизией ${APP_GIT_HASH} и включает последние изменения за ${effectiveBuildDate}.`,
+        en: `Build v${APP_VERSION} is synced with git revision ${APP_GIT_HASH} and includes the latest changes for ${effectiveBuildDate}.`,
+      }
+    : {
+        ru: `Текущая сборка приложения синхронизирована с git-ревизией ${APP_GIT_HASH}. Для этой версии ещё не добавлено отдельное описание изменений.`,
+        en: `The current app build is synced with git revision ${APP_GIT_HASH}. A dedicated changelog entry has not been added for this version yet.`,
+      },
 }
 
 export const VERSION_HISTORY: VersionHistoryEntry[] = STATIC_VERSION_HISTORY.some((entry) => entry.version === APP_VERSION)
