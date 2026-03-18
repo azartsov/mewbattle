@@ -285,10 +285,14 @@ const STATIC_VERSION_HISTORY: VersionHistoryEntry[] = [
 ]
 
 const buildDate = APP_BUILD_GENERATED_AT.slice(0, 10)
-const latestSameDayEntry = STATIC_VERSION_HISTORY.find((entry) => entry.date === buildDate)
+const latestKnownDate = STATIC_VERSION_HISTORY.reduce((latest, entry) => (
+  entry.date.localeCompare(latest) > 0 ? entry.date : latest
+), buildDate)
+const effectiveBuildDate = buildDate.localeCompare(latestKnownDate) >= 0 ? buildDate : latestKnownDate
+const latestSameDayEntry = STATIC_VERSION_HISTORY.find((entry) => entry.date === effectiveBuildDate)
 const autoCurrentVersionEntry: VersionHistoryEntry = {
   version: APP_VERSION,
-  date: buildDate,
+  date: effectiveBuildDate,
   summary: latestSameDayEntry?.summary ?? {
     ru: `Текущая сборка приложения синхронизирована с git-ревизией ${APP_GIT_HASH}. Для этой версии ещё не добавлено отдельное описание изменений.`,
     en: `The current app build is synced with git revision ${APP_GIT_HASH}. A dedicated changelog entry has not been added for this version yet.`,
