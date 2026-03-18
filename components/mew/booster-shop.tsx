@@ -137,55 +137,59 @@ export function BoosterShop({ offers, currentCoins, onOpen, onInsufficientCoins 
             <div
               key={offer.id}
               className={cn(
-                "booster-card-float relative w-[224px] overflow-hidden rounded-[30px] border bg-white/80 p-3 backdrop-blur-sm transition-transform duration-300 hover:-translate-y-1",
+                "booster-card-float relative w-[216px] overflow-hidden rounded-[28px] border bg-white/80 p-2.5 backdrop-blur-sm transition-transform duration-300 hover:-translate-y-1",
                 theme.frame,
                 theme.text,
                 opening && "pointer-events-none opacity-80",
               )}
               title={offer.title}
             >
-              <div className={cn("relative min-h-[300px] overflow-hidden rounded-[24px] border border-white/60 bg-gradient-to-b", theme.sky)}>
-                <div className="absolute inset-x-0 top-0 h-[58%] overflow-hidden rounded-t-[24px]">
-                  <div className="absolute left-4 top-4 h-12 w-12 rounded-full bg-white/55 blur-sm" />
-                  <div className={cn("booster-cloud-drift absolute left-5 top-8 h-6 w-16 rounded-full blur-[1px]", theme.cloud)} />
-                  <div className={cn("booster-cloud-drift absolute right-6 top-12 h-5 w-14 rounded-full blur-[1px]", theme.cloud)} style={{ animationDelay: "-2.3s" }} />
-                  <div className={cn("absolute inset-x-0 bottom-0 h-24 rounded-t-[60%] bg-gradient-to-t", theme.meadow)} />
-                  <div className="absolute left-6 bottom-6 h-4 w-20 rounded-full bg-emerald-500/20 blur-md" />
-                  <div className="absolute right-8 bottom-8 h-4 w-16 rounded-full bg-emerald-500/15 blur-md" />
-                  <div className="absolute left-1/2 top-[52%] z-10 h-[136px] w-[136px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/35 blur-2xl" />
+              <div className={cn("relative min-h-[268px] overflow-hidden rounded-[22px] border border-white/60 bg-gradient-to-b", theme.sky)}>
+                <div className="absolute inset-x-0 top-0 h-[54%] overflow-hidden rounded-t-[22px]">
+                  <div className="absolute left-4 top-4 h-10 w-10 rounded-full bg-white/55 blur-sm" />
+                  <div className={cn("booster-cloud-drift absolute left-5 top-7 h-5 w-14 rounded-full blur-[1px]", theme.cloud)} />
+                  <div className={cn("booster-cloud-drift absolute right-5 top-10 h-4 w-12 rounded-full blur-[1px]", theme.cloud)} style={{ animationDelay: "-2.3s" }} />
+                  <div className={cn("absolute inset-x-0 bottom-0 h-20 rounded-t-[60%] bg-gradient-to-t", theme.meadow)} />
+                  <div className="absolute left-5 bottom-5 h-3.5 w-16 rounded-full bg-emerald-500/20 blur-md" />
+                  <div className="absolute right-7 bottom-7 h-3.5 w-14 rounded-full bg-emerald-500/15 blur-md" />
+                  <div className="absolute left-1/2 top-[50%] z-10 h-[118px] w-[118px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/35 blur-2xl" />
                   <Image
                     src={theme.art}
                     alt={offer.title}
-                    width={136}
-                    height={136}
-                    className="absolute left-1/2 top-[52%] z-20 h-[136px] w-[136px] -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_12px_18px_rgba(15,23,42,0.18)]"
+                    width={118}
+                    height={118}
+                    className="absolute left-1/2 top-[50%] z-20 h-[118px] w-[118px] -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_10px_16px_rgba(15,23,42,0.18)]"
                   />
                 </div>
 
-                <div className="relative z-30 flex min-h-[300px] flex-col justify-between p-4">
+                <div className="relative z-30 flex min-h-[268px] flex-col justify-between p-3.5">
                   <div className="flex items-start justify-between gap-2">
-                    <span className={cn("rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em]", theme.badge)}>
+                    <span className={cn("rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]", theme.badge)}>
                       {offer.title}
                     </span>
-                    <CoinPawBadge amount={offer.cost} compact />
+                    <CoinPawBadge
+                      amount={offer.cost}
+                      compact
+                      className="shrink-0 border-slate-900/70 bg-slate-950/88 text-amber-200 shadow-[0_8px_20px_rgba(15,23,42,0.32)] [&>span:first-child]:bg-amber-400/18 [&>span:first-child]:text-amber-200"
+                    />
                   </div>
 
-                  <div className={cn("rounded-[22px] border border-white/65 p-4 shadow-sm backdrop-blur-sm", theme.panel)}>
+                  <div className={cn("rounded-[20px] border border-white/65 p-3 shadow-sm backdrop-blur-sm", theme.panel)}>
                     <p className="text-sm font-semibold leading-snug">{offer.subtitle}</p>
-                    <div className="mt-3 grid grid-cols-2 gap-1.5 text-[11px] font-medium">
+                    <div className="mt-2.5 grid grid-cols-2 gap-1 text-[10px] font-medium">
                       {RARITY_LABEL.map((rarity) => (
-                        <span key={`${offer.id}-${rarity}`} className="rounded-full bg-white/65 px-2 py-1 text-center">
+                        <span key={`${offer.id}-${rarity}`} className="rounded-full bg-white/65 px-1.5 py-1 text-center leading-none">
                           {rarityLabels[rarity]} {Math.round((offer.rarityWeights[rarity] ?? 0) * 100)}%
                         </span>
                       ))}
                     </div>
 
                     {!canAfford ? (
-                      <p className="mt-3 text-xs font-medium text-rose-700">
+                      <p className="mt-2.5 text-[11px] font-medium leading-snug text-rose-700">
                         {t.boosterNotEnoughCoins} {t.boosterNeedMoreCoins} {missingCoins} {t.coins.toLowerCase()}.
                       </p>
                     ) : (
-                      <p className="mt-3 text-xs text-foreground/70">
+                      <p className="mt-2.5 text-[11px] leading-snug text-foreground/70">
                         {t.boosterCostWarning} {offer.cost} {t.coins.toLowerCase()}.
                       </p>
                     )}
@@ -193,7 +197,7 @@ export function BoosterShop({ offers, currentCoins, onOpen, onInsufficientCoins 
                     <Button
                       size="sm"
                       variant={canAfford ? "default" : "secondary"}
-                      className="mt-4 w-full rounded-full"
+                      className="mt-3 w-full rounded-full"
                       onClick={() => {
                         void open(offer)
                       }}
