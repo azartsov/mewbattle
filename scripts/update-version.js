@@ -9,6 +9,7 @@ const serviceWorkerPath = path.join(__dirname, '../public/sw.js');
 const versionManifestPath = path.join(__dirname, '../public/version.json');
 const repoRoot = path.join(__dirname, '..');
 const VERSION_OFFSET = 190;
+const generatedAt = new Date().toISOString();
 
 const gitCommitCount = Number.parseInt(
   execSync('git rev-list --count HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim(),
@@ -27,6 +28,7 @@ const newVersionContent = `// Application version
 export const APP_VERSION = "0.${minorVersion}"
 export const APP_GIT_COMMIT_COUNT = ${gitCommitCount}
 export const APP_GIT_HASH = "${gitShortHash}"
+export const APP_BUILD_GENERATED_AT = "${generatedAt}"
 `;
 
 fs.writeFileSync(versionPath, newVersionContent, 'utf-8');
@@ -44,7 +46,7 @@ if (newServiceWorkerContent === serviceWorkerContent) {
 fs.writeFileSync(serviceWorkerPath, newServiceWorkerContent, 'utf-8');
 fs.writeFileSync(
   versionManifestPath,
-  `${JSON.stringify({ version: `0.${minorVersion}`, gitCommitCount, gitHash: gitShortHash, generatedAt: new Date().toISOString() }, null, 2)}\n`,
+  `${JSON.stringify({ version: `0.${minorVersion}`, gitCommitCount, gitHash: gitShortHash, generatedAt }, null, 2)}\n`,
   'utf-8'
 );
 

@@ -1,3 +1,5 @@
+import { APP_BUILD_GENERATED_AT, APP_GIT_HASH, APP_VERSION } from "@/lib/version"
+
 export interface VersionHistoryEntry {
   version: string
   date: string
@@ -7,7 +9,7 @@ export interface VersionHistoryEntry {
   }
 }
 
-export const VERSION_HISTORY: VersionHistoryEntry[] = [
+const STATIC_VERSION_HISTORY: VersionHistoryEntry[] = [
   {
     version: "0.217",
     date: "2026-03-18",
@@ -273,3 +275,17 @@ export const VERSION_HISTORY: VersionHistoryEntry[] = [
     },
   },
 ]
+
+const buildDate = APP_BUILD_GENERATED_AT.slice(0, 10)
+const autoCurrentVersionEntry: VersionHistoryEntry = {
+  version: APP_VERSION,
+  date: buildDate,
+  summary: {
+    ru: `Текущая сборка приложения синхронизирована с git-ревизией ${APP_GIT_HASH}. Для этой версии ещё не добавлено отдельное описание изменений.`,
+    en: `The current app build is synced with git revision ${APP_GIT_HASH}. A dedicated changelog entry has not been added for this version yet.`,
+  },
+}
+
+export const VERSION_HISTORY: VersionHistoryEntry[] = STATIC_VERSION_HISTORY.some((entry) => entry.version === APP_VERSION)
+  ? STATIC_VERSION_HISTORY
+  : [autoCurrentVersionEntry, ...STATIC_VERSION_HISTORY]
