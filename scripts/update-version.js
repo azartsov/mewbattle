@@ -25,10 +25,15 @@ const minorVersion = VERSION_OFFSET + gitCommitCount;
 
 const newVersionContent = `// Application version
 // Format: 0.(VERSION_OFFSET + git commit count)
-export const APP_VERSION = "0.${minorVersion}"
-export const APP_GIT_COMMIT_COUNT = ${gitCommitCount}
-export const APP_GIT_HASH = "${gitShortHash}"
-export const APP_BUILD_GENERATED_AT = "${generatedAt}"
+const fallbackAppVersion = "0.${minorVersion}"
+const fallbackGitCommitCount = ${gitCommitCount}
+const fallbackGitHash = "${gitShortHash}"
+const fallbackBuildGeneratedAt = "${generatedAt}"
+
+export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? fallbackAppVersion
+export const APP_GIT_COMMIT_COUNT = Number.parseInt(process.env.NEXT_PUBLIC_APP_GIT_COMMIT_COUNT ?? "${gitCommitCount}", 10)
+export const APP_GIT_HASH = process.env.NEXT_PUBLIC_APP_GIT_HASH ?? fallbackGitHash
+export const APP_BUILD_GENERATED_AT = process.env.NEXT_PUBLIC_APP_BUILD_GENERATED_AT ?? fallbackBuildGeneratedAt
 `;
 
 fs.writeFileSync(versionPath, newVersionContent, 'utf-8');
