@@ -11,6 +11,14 @@ export interface VersionHistoryEntry {
 
 const STATIC_VERSION_HISTORY: VersionHistoryEntry[] = [
   {
+    version: "0.223",
+    date: "2026-03-19",
+    summary: {
+      ru: "Мобильная колода уплотнена: карточки выровнены, удаление перенесено в крестик поверх карты, статистика убрана в верхнее меню, а история версий за день стала короче.",
+      en: "The mobile deck UI was tightened up: cards were aligned, removal moved to an overlay close icon, battle stats moved into the top menu, and daily version history became more compact.",
+    },
+  },
+  {
     version: "0.217",
     date: "2026-03-18",
     summary: {
