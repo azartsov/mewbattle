@@ -196,6 +196,7 @@ export default function MewBattlePage() {
   const [showResetDialog, setShowResetDialog] = useState(false)
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [showVersionHistory, setShowVersionHistory] = useState(false)
+  const [showBattleStatsDialog, setShowBattleStatsDialog] = useState(false)
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [leaderboardLoading, setLeaderboardLoading] = useState(false)
   const [deckDraft, setDeckDraft] = useState<{ name: string; cardIds: string[] } | null>(null)
@@ -952,6 +953,12 @@ export default function MewBattlePage() {
                     {t.leaderboard}
                   </DropdownMenuItem>
                 )}
+                {profile && (
+                  <DropdownMenuItem onSelect={() => setShowBattleStatsDialog(true)}>
+                    <TrendingUp className="h-4 w-4" />
+                    {t.statsHistory}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onSelect={() => setLanguage(language === "en" ? "ru" : "en")}>
                   <Languages className="h-4 w-4" />
                   {language === "en" ? "RU" : "EN"}
@@ -1016,61 +1023,6 @@ export default function MewBattlePage() {
                 </>
               ) : t.bankruptcyReset}
             </Button>
-          </Card>
-        )}
-
-        {profile && (
-          <Card className="border-primary/25 bg-gradient-to-br from-primary/8 via-background to-emerald-500/8 px-2 py-1.5">
-            <div className='flex items-center justify-between gap-2 font-["Trebuchet_MS","Verdana",sans-serif]'>
-              <div>
-                <p className="text-sm font-semibold text-slate-100">{t.battleStatsHistory}</p>
-                <p className="text-[11px] text-slate-300/75">{t.avgTurns}: {battleStatsSummary.avgTurns}</p>
-              </div>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button
-                    size="sm"
-                    className="h-8 rounded-full bg-gradient-to-r from-sky-500 to-emerald-500 px-3 text-white shadow-md shadow-sky-500/20"
-                    aria-label={t.statsHistory}
-                    title={t.statsHistory}
-                  >
-                    <TrendingUp className="h-3.5 w-3.5" />
-                    {t.statsHistory}
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-                  <DialogHeader>
-                    <DialogTitle className='font-["Trebuchet_MS","Verdana",sans-serif] text-amber-100'>{t.battleStatsHistory}</DialogTitle>
-                  </DialogHeader>
-                  <div className='grid grid-cols-2 gap-2 text-sm font-["Trebuchet_MS","Verdana",sans-serif] md:grid-cols-3'>
-                    <Card className="p-1.5 text-center border-emerald-500/35 bg-gradient-to-br from-emerald-500/12 to-emerald-500/0">
-                      <p className="text-xs text-emerald-100/80">{t.wins}</p>
-                      <p className="text-base font-bold leading-none text-emerald-300">{battleStatsSummary.wins}</p>
-                    </Card>
-                    <Card className="p-1.5 text-center border-rose-500/35 bg-gradient-to-br from-rose-500/12 to-rose-500/0">
-                      <p className="text-xs text-rose-100/80">{t.losses}</p>
-                      <p className="text-base font-bold leading-none text-rose-300">{battleStatsSummary.losses}</p>
-                    </Card>
-                    <Card className="p-1.5 text-center border-sky-500/35 bg-gradient-to-br from-sky-500/12 to-sky-500/0">
-                      <p className="text-xs text-sky-100/80">{t.avgTurns}</p>
-                      <p className="text-base font-bold leading-none text-sky-300">{battleStatsSummary.avgTurns}</p>
-                    </Card>
-                    <Card className="p-1.5 text-center border-cyan-500/35 bg-gradient-to-br from-cyan-500/12 to-cyan-500/0">
-                      <p className="text-xs text-cyan-100/80">{t.streak}</p>
-                      <p className="text-base font-bold leading-none text-cyan-300">{battleStatsSummary.streak}</p>
-                    </Card>
-                    <Card className="p-1.5 text-center border-amber-500/35 bg-gradient-to-br from-amber-500/12 to-amber-500/0">
-                      <p className="text-xs text-amber-100/80">{t.earned}</p>
-                      <p className="text-base font-bold leading-none text-amber-300">{battleStatsSummary.earned}</p>
-                    </Card>
-                    <Card className="p-1.5 text-center border-zinc-500/35 bg-gradient-to-br from-zinc-500/12 to-zinc-500/0">
-                      <p className="text-xs text-zinc-200/80">{t.spent}</p>
-                      <p className="text-base font-bold leading-none text-zinc-200">{battleStatsSummary.spent}</p>
-                    </Card>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
           </Card>
         )}
 
@@ -1409,6 +1361,40 @@ export default function MewBattlePage() {
       </Dialog>
 
       <VersionHistoryDialog open={showVersionHistory} onOpenChange={setShowVersionHistory} />
+
+      <Dialog open={showBattleStatsDialog} onOpenChange={setShowBattleStatsDialog}>
+        <DialogContent className="max-w-2xl border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+          <DialogHeader>
+            <DialogTitle className='font-["Trebuchet_MS","Verdana",sans-serif] text-amber-100'>{t.battleStatsHistory}</DialogTitle>
+          </DialogHeader>
+          <div className='grid grid-cols-2 gap-2 text-sm font-["Trebuchet_MS","Verdana",sans-serif] md:grid-cols-3'>
+            <Card className="p-1.5 text-center border-emerald-500/35 bg-gradient-to-br from-emerald-500/12 to-emerald-500/0">
+              <p className="text-xs text-emerald-100/80">{t.wins}</p>
+              <p className="text-base font-bold leading-none text-emerald-300">{battleStatsSummary.wins}</p>
+            </Card>
+            <Card className="p-1.5 text-center border-rose-500/35 bg-gradient-to-br from-rose-500/12 to-rose-500/0">
+              <p className="text-xs text-rose-100/80">{t.losses}</p>
+              <p className="text-base font-bold leading-none text-rose-300">{battleStatsSummary.losses}</p>
+            </Card>
+            <Card className="p-1.5 text-center border-sky-500/35 bg-gradient-to-br from-sky-500/12 to-sky-500/0">
+              <p className="text-xs text-sky-100/80">{t.avgTurns}</p>
+              <p className="text-base font-bold leading-none text-sky-300">{battleStatsSummary.avgTurns}</p>
+            </Card>
+            <Card className="p-1.5 text-center border-cyan-500/35 bg-gradient-to-br from-cyan-500/12 to-cyan-500/0">
+              <p className="text-xs text-cyan-100/80">{t.streak}</p>
+              <p className="text-base font-bold leading-none text-cyan-300">{battleStatsSummary.streak}</p>
+            </Card>
+            <Card className="p-1.5 text-center border-amber-500/35 bg-gradient-to-br from-amber-500/12 to-amber-500/0">
+              <p className="text-xs text-amber-100/80">{t.earned}</p>
+              <p className="text-base font-bold leading-none text-amber-300">{battleStatsSummary.earned}</p>
+            </Card>
+            <Card className="p-1.5 text-center border-zinc-500/35 bg-gradient-to-br from-zinc-500/12 to-zinc-500/0">
+              <p className="text-xs text-zinc-200/80">{t.spent}</p>
+              <p className="text-base font-bold leading-none text-zinc-200">{battleStatsSummary.spent}</p>
+            </Card>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showInstallDialog} onOpenChange={setShowInstallDialog}>
         <DialogContent className="max-w-sm">
