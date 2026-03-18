@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev --webpack",
     "prebuild": "npm run test",
-    "build": "node scripts/update-version.js && next build",
+    "version:sync": "node scripts/update-version.js",
+    "build": "next build",
+    "build:sync-version": "npm run version:sync && next build",
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest run",

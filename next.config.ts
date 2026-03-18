@@ -9,6 +9,14 @@ const versionPath = path.join(repoRoot, "lib/version.ts");
 const serviceWorkerPath = path.join(repoRoot, "public/sw.js");
 const versionManifestPath = path.join(repoRoot, "public/version.json");
 
+type VersionMetadata = {
+  appVersion: string;
+  gitCommitCount: number;
+  gitShortHash: string;
+  generatedAt: string;
+  versionAlreadySynced: boolean;
+};
+
 function createVersionModuleContent(appVersion: string, gitCommitCount: number, gitShortHash: string, generatedAt: string) {
   return `// Application version
 // Format: 0.(VERSION_OFFSET + git commit count)
@@ -24,7 +32,31 @@ export const APP_BUILD_GENERATED_AT = process.env.NEXT_PUBLIC_APP_BUILD_GENERATE
 `;
 }
 
-function resolveVersionMetadata() {
+function parseCommittedVersionMetadata(): VersionMetadata | null {
+  if (!existsSync(versionPath)) {
+    return null;
+  }
+
+  const versionContent = readFileSync(versionPath, "utf-8");
+  const appVersionMatch = versionContent.match(/const fallbackAppVersion = "([^"]+)"/);
+  const gitCommitCountMatch = versionContent.match(/const fallbackGitCommitCount = (\d+)/);
+  const gitHashMatch = versionContent.match(/const fallbackGitHash = "([^"]+)"/);
+  const generatedAtMatch = versionContent.match(/const fallbackBuildGeneratedAt = "([^"]+)"/);
+
+  if (!appVersionMatch || !gitCommitCountMatch || !gitHashMatch || !generatedAtMatch) {
+    return null;
+  }
+
+  return {
+    appVersion: appVersionMatch[1],
+    gitCommitCount: Number.parseInt(gitCommitCountMatch[1], 10),
+    gitShortHash: gitHashMatch[1],
+    generatedAt: generatedAtMatch[1],
+    versionAlreadySynced: true,
+  };
+}
+
+function resolveVersionMetadata(): VersionMetadata {
   const gitCommitCount = Number.parseInt(
     execSync("git rev-list --count HEAD", { cwd: repoRoot, encoding: "utf-8" }).trim(),
     10,
@@ -87,7 +119,20 @@ function syncVersionMetadata() {
   }
 }
 
-const versionMetadata = syncVersionMetadata();
+function loadVersionMetadata() {
+  const shouldUseCommittedMetadata = process.env.VERCEL === "1" || process.env.CI === "true";
+
+  if (shouldUseCommittedMetadata) {
+    const committedMetadata = parseCommittedVersionMetadata();
+    if (committedMetadata) {
+      return committedMetadata;
+    }
+  }
+
+  return syncVersionMetadata() ?? parseCommittedVersionMetadata();
+}
+
+const versionMetadata = loadVersionMetadata();
 
 const nextConfig: NextConfig = {
   env: versionMetadata ? {
