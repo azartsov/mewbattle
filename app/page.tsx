@@ -50,7 +50,7 @@ import { PreAuthUkiyoeSplash } from "@/components/mew/pre-auth-ukiyoe-splash"
 import { VersionHistoryDialog } from "@/components/mew/version-history-dialog"
 import { useMewI18n } from "@/lib/mew-i18n"
 import { pickRandomBoss, scaleBossForPlayer } from "@/lib/mew-bosses"
-import { APP_VERSION } from "@/lib/version"
+import { APP_BUILD_GENERATED_AT, APP_VERSION } from "@/lib/version"
 import { pickCatCodexQuote } from "@/lib/cat-codex"
 import { CardDesignProvider, type CardDesignVariant } from "@/lib/mew-card-design"
 import { DEFAULT_CARD_DESIGN, loadLocalCardDesign, loadUserCardDesign, normalizeCardDesign, saveLocalCardDesign, saveUserCardDesign } from "@/lib/user-settings"
@@ -169,7 +169,6 @@ export default function MewBattlePage() {
   const [showInstallDialog, setShowInstallDialog] = useState(false)
   const [installDialogMessage, setInstallDialogMessage] = useState<string | null>(null)
   const [availableVersion, setAvailableVersion] = useState<string | null>(null)
-  const [runtimeVersionManifest, setRuntimeVersionManifest] = useState<VersionManifest | null>(null)
   const [showUpdateDialog, setShowUpdateDialog] = useState(false)
   const [applyingUpdate, setApplyingUpdate] = useState(false)
   const [tab, setTab] = useState<TabKey>("collection")
@@ -208,8 +207,8 @@ export default function MewBattlePage() {
   const [savingGameState, setSavingGameState] = useState(false)
 
   const userId = user?.uid ?? null
-  const displayedAppVersion = runtimeVersionManifest?.version ?? APP_VERSION
-  const displayedBuildDate = runtimeVersionManifest?.generatedAt?.slice(0, 10)
+  const displayedAppVersion = APP_VERSION
+  const displayedBuildDate = APP_BUILD_GENERATED_AT.slice(0, 10)
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -247,34 +246,6 @@ export default function MewBattlePage() {
   }, [t.pwaInstalledSuccess])
 
   useEffect(() => {
-    const abortController = new AbortController()
-    let cancelled = false
-
-    const loadRuntimeVersionManifest = async () => {
-      try {
-        const response = await fetch(`/version.json?ts=${Date.now()}`, {
-          cache: "no-store",
-          signal: abortController.signal,
-        })
-        if (!response.ok) return
-
-        const manifest = await response.json() as VersionManifest
-        if (cancelled || !manifest.version) return
-        setRuntimeVersionManifest(manifest)
-      } catch {
-        // Ignore version manifest fetch failures.
-      }
-    }
-
-    void loadRuntimeVersionManifest()
-
-    return () => {
-      cancelled = true
-      abortController.abort()
-    }
-  }, [])
-
-  useEffect(() => {
     if (!pwaInstalled || typeof window === "undefined") return
 
     const abortController = new AbortController()
@@ -290,7 +261,6 @@ export default function MewBattlePage() {
 
         const manifest = await response.json() as VersionManifest
         if (cancelled || !manifest.version) return
-        setRuntimeVersionManifest(manifest)
 
         if (isNewerVersion(manifest.version, displayedAppVersion)) {
           setAvailableVersion(manifest.version)
