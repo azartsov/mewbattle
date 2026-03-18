@@ -6,6 +6,7 @@ import { Cat, Skull } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { applyTeamHeal, calculateTurn, getMagicalHealingAmount, hasMagicalHealingAbility, rollAbilityProcs } from "@/lib/mew-engine"
+import { BATTLE_ENTRY_COST } from "@/lib/mew-firestore"
 import type { LeaderboardSyncResult } from "@/lib/mew-firestore"
 import type { BattleLogEntry, FighterCard, MewCard } from "@/lib/mew-types"
 import { BattleFighterCard } from "@/components/mew/battle-fighter-card"
@@ -102,6 +103,8 @@ interface HealingStreamFx {
 interface BattleResolutionState {
   winnerId: "player" | "boss"
   rewardCoins: number
+  baseRewardCoins: number
+  hpBonusCoins: number
   defeatQuote: string | null
   leaderboardResult: LeaderboardSyncResult | null
 }
@@ -229,6 +232,8 @@ export function BattleArena({
   const scheduleBattleResolution = (
     winnerId: "player" | "boss",
     rewardCoins: number,
+    baseRewardCoins: number,
+    hpBonusCoins: number,
     persistBattle: () => Promise<{
       rewardCoins: number
       leaderboardResult: LeaderboardSyncResult | null
@@ -239,6 +244,8 @@ export function BattleArena({
       setBattleResolution({
         winnerId,
         rewardCoins,
+        baseRewardCoins,
+        hpBonusCoins,
         defeatQuote: winnerId === "boss" ? getRandomDefeatQuote() : null,
         leaderboardResult: null,
       })
@@ -612,7 +619,7 @@ export function BattleArena({
       setTurn((t) => t + 1)
       const hpBonus = fightersAfterPlayer.reduce((sum, f) => sum + Math.max(0, f.currentHealth), 0)
       const fallbackRewardCoins = predictedWinRewardBase + hpBonus
-      scheduleBattleResolution("player", fallbackRewardCoins, () => onSaveBattle("player", boss.id, nextLog, hpBonus))
+      scheduleBattleResolution("player", fallbackRewardCoins, predictedWinRewardBase, hpBonus, () => onSaveBattle("player", boss.id, nextLog, hpBonus))
       return
     }
 
@@ -663,7 +670,7 @@ export function BattleArena({
     setDraggedId(null)
 
     if (updatedFighters.every((f) => f.currentHealth <= 0)) {
-      scheduleBattleResolution("boss", 0, () => onSaveBattle("boss", boss.id, finalLog, 0))
+      scheduleBattleResolution("boss", 0, 0, 0, () => onSaveBattle("boss", boss.id, finalLog, 0))
     }
   }
   // keep ref up-to-date so countdown closure always calls the latest version
@@ -1209,11 +1216,20 @@ export function BattleArena({
                         <>
                           <p className="text-[11px] uppercase tracking-[0.28em] text-emerald-200/90">{t.coinsWon}</p>
                           <p className="text-3xl font-semibold text-emerald-100 sm:text-4xl lg:text-5xl">+{battleResolution.rewardCoins}</p>
+                          <p className="text-sm leading-relaxed text-slate-100/88 sm:text-base">
+                            {t.battleBase}: {battleResolution.baseRewardCoins}
+                            {" · "}
+                            {t.battleHpBonus}: +{battleResolution.hpBonusCoins}
+                          </p>
                         </>
                       ) : (
-                        <p className="max-w-[24rem] text-base leading-relaxed text-slate-100 sm:text-lg">
-                          {t.battleSavedLoss}
-                        </p>
+                        <>
+                          <p className="text-[11px] uppercase tracking-[0.28em] text-rose-200/90">{t.coinsLost}</p>
+                          <p className="text-3xl font-semibold text-rose-100 sm:text-4xl lg:text-5xl">-{BATTLE_ENTRY_COST}</p>
+                          <p className="max-w-[24rem] text-base leading-relaxed text-slate-100 sm:text-lg">
+                            {t.battleDefeatCostMessage.replace("{amount}", String(BATTLE_ENTRY_COST))}
+                          </p>
+                        </>
                       )}
                     </div>
 

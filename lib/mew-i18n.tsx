@@ -204,6 +204,8 @@ type MewTranslations = {
   victoryMessage: string
   defeatMessage: string
   coinsWon: string
+  coinsLost: string
+  battleDefeatCostMessage: string
   returnFromBattle: string
 }
 
@@ -408,6 +410,8 @@ const translations: Record<MewLanguage, MewTranslations> = {
     victoryMessage: "The cats chased the boss away and brought home a bright reward.",
     defeatMessage: "The boss won this duel, but the cats will return stronger.",
     coinsWon: "Coins won",
+    coinsLost: "Coins lost",
+    battleDefeatCostMessage: "You lost {amount} coins, the battle fee.",
     returnFromBattle: "Return",
   },
   ru: {
@@ -610,6 +614,8 @@ const translations: Record<MewLanguage, MewTranslations> = {
     victoryMessage: "Коты прогнали босса и вернулись с заслуженной наградой.",
     defeatMessage: "В этот раз босс оказался сильнее, но коты еще вернутся.",
     coinsWon: "Выиграно монет",
+    coinsLost: "Потеряно монет",
+    battleDefeatCostMessage: "Мы потеряли {amount} монет, плату за бой.",
     returnFromBattle: "Вернуться",
   },
 }

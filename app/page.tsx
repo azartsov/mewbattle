@@ -721,6 +721,49 @@ export default function MewBattlePage() {
     return computeRewardForDeckScore(currentScore)
   }, [computeRewardForDeckScore, selectedDeckSlot, deckPowerBySlot])
 
+  const deckMetricsBySlot = useMemo(() => {
+    const map = new Map<DeckSlotKey, {
+      totalHp: number
+      avgAttack: number
+      totalValue: number
+      potentialReward: number
+    }>()
+
+    for (const slot of DECK_SLOT_KEYS) {
+      const deckCards = battleDeckCardsBySlot.get(slot) ?? []
+      map.set(slot, {
+        totalHp: deckCards.reduce((sum, card) => sum + card.health, 0),
+        avgAttack: deckCards.length > 0
+          ? Math.round((deckCards.reduce((sum, card) => sum + card.attack, 0) / deckCards.length) * 10) / 10
+          : 0,
+        totalValue: deckCards.reduce((sum, card) => sum + getCardSellPrice(card), 0),
+        potentialReward: computeRewardForDeckScore(deckPowerBySlot.get(slot) ?? 0),
+      })
+    }
+
+    return map
+  }, [battleDeckCardsBySlot, computeRewardForDeckScore, deckPowerBySlot])
+
+  const battleMetricLeaders = useMemo(() => {
+    const metrics = Array.from(deckMetricsBySlot.values())
+    return {
+      totalHp: Math.max(0, ...metrics.map((metric) => metric.totalHp)),
+      avgAttack: Math.max(0, ...metrics.map((metric) => metric.avgAttack)),
+      totalValue: Math.max(0, ...metrics.map((metric) => metric.totalValue)),
+      potentialReward: Math.max(0, ...metrics.map((metric) => metric.potentialReward)),
+    }
+  }, [deckMetricsBySlot])
+
+  const getBattleMetricTextClassName = useCallback((kind: "hp" | "atk" | "value", value: number) => {
+    if (kind === "hp") return value > 0 && value === battleMetricLeaders.totalHp ? "text-emerald-300/80" : "text-slate-400"
+    if (kind === "atk") return value > 0 && value === battleMetricLeaders.avgAttack ? "text-rose-300/80" : "text-slate-400"
+    return value > 0 && value === battleMetricLeaders.totalValue ? "text-sky-300/80" : "text-slate-400"
+  }, [battleMetricLeaders.avgAttack, battleMetricLeaders.totalHp, battleMetricLeaders.totalValue])
+
+  const getBattleRewardTextClassName = useCallback((value: number) => {
+    return value > 0 && value === battleMetricLeaders.potentialReward ? "text-amber-300/80" : "text-slate-400"
+  }, [battleMetricLeaders.potentialReward])
+
   const saveBattle = useCallback(async (winnerId: string, bossId: string, log: BattleLogEntry[], hpBonus = 0) => {
     if (!userId) {
       return {
@@ -1080,14 +1123,7 @@ export default function MewBattlePage() {
                 deckButtons={DECK_SLOT_KEYS.map((slot) => ({
                   slot,
                   label: decksBySlot.get(slot)?.deckName ?? getDefaultDeckName(slot),
-                  totalHp: (battleDeckCardsBySlot.get(slot) ?? []).reduce((sum, card) => sum + card.health, 0),
-                  avgAttack: (() => {
-                    const deckCards = battleDeckCardsBySlot.get(slot) ?? []
-                    if (deckCards.length === 0) return 0
-                    return Math.round((deckCards.reduce((sum, card) => sum + card.attack, 0) / deckCards.length) * 10) / 10
-                  })(),
-                  totalValue: (battleDeckCardsBySlot.get(slot) ?? []).reduce((sum, card) => sum + getCardSellPrice(card), 0),
-                  potentialReward: computeRewardForDeckScore(deckPowerBySlot.get(slot) ?? 0),
+                  ...(deckMetricsBySlot.get(slot) ?? { totalHp: 0, avgAttack: 0, totalValue: 0, potentialReward: 0 }),
                 }))}
                 selectedDeckSlot={selectedDeckSlot}
                 initialDeckName={selectedDeck?.deckName ?? getDefaultDeckName(selectedDeckSlot)}
@@ -1139,21 +1175,6 @@ export default function MewBattlePage() {
                     .battle-action-button-glow {
                       animation: battle-action-button-glow 1.55s ease-in-out infinite;
                     }
-                    @keyframes battle-reward-box-glow {
-                      0%, 100% {
-                        box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.08), inset 0 0 0 1px rgba(56, 189, 248, 0.16);
-                        border-color: rgba(56, 189, 248, 0.22);
-                        background: rgba(14, 116, 144, 0.08);
-                      }
-                      50% {
-                        box-shadow: 0 0 0 5px rgba(56, 189, 248, 0.05), 0 0 24px rgba(56, 189, 248, 0.14), inset 0 0 0 1px rgba(125, 211, 252, 0.28);
-                        border-color: rgba(125, 211, 252, 0.36);
-                        background: rgba(14, 116, 144, 0.14);
-                      }
-                    }
-                    .battle-reward-box-glow {
-                      animation: battle-reward-box-glow 1.8s ease-in-out infinite;
-                    }
                   `}</style>
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
@@ -1199,10 +1220,11 @@ export default function MewBattlePage() {
                           {DECK_SLOT_KEYS.map((slotKey) => {
                             const slotDeck = decksBySlot.get(slotKey)
                             const availableCards = battleDeckCardsBySlot.get(slotKey)?.length ?? 0
+                            const deckMetrics = deckMetricsBySlot.get(slotKey) ?? { totalHp: 0, avgAttack: 0, totalValue: 0, potentialReward: 0 }
                             const isSelected = battleDeckSlot === slotKey
                             const shouldHighlightChoice = waitingForBattleDeckChoice && availableCards > 0 && !isSelected
                             return (
-                              <div key={slotKey} className="min-w-0">
+                              <div key={slotKey} className="min-w-0 rounded-xl px-1 py-0.5">
                                 <Button
                                   size="sm"
                                   variant={isSelected ? "default" : "outline"}
@@ -1212,6 +1234,15 @@ export default function MewBattlePage() {
                                 >
                                   {(slotDeck?.deckName ?? getDefaultDeckName(slotKey))} ({availableCards})
                                 </Button>
+                                <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px] leading-tight sm:text-[11px]">
+                                  <span className={getBattleMetricTextClassName("hp", deckMetrics.totalHp)}>HP {deckMetrics.totalHp}</span>
+                                  <span className="px-1 text-slate-600">·</span>
+                                  <span className={getBattleMetricTextClassName("atk", deckMetrics.avgAttack)}>ATK {deckMetrics.avgAttack}</span>
+                                  <span className="px-1 text-slate-600">·</span>
+                                  <span className={getBattleMetricTextClassName("value", deckMetrics.totalValue)}>{deckMetrics.totalValue}</span>
+                                  <span className="px-1 text-slate-600">·</span>
+                                  <span className={getBattleRewardTextClassName(deckMetrics.potentialReward)}>+{deckMetrics.potentialReward}</span>
+                                </div>
                               </div>
                             )
                           })}
@@ -1225,17 +1256,6 @@ export default function MewBattlePage() {
                               {previewDeckCards.map((card, idx) => (
                                 <MewCardFace key={`preview-${battleDeckSlot}-${card.id}-${idx}`} card={card} compact previewCompact className="max-w-[88px] sm:max-w-[96px]" />
                               ))}
-                            </div>
-                            <div className="battle-reward-box-glow rounded-xl border px-2.5 py-1.5">
-                              <p className="text-[11px] font-medium leading-snug text-sky-100">{t.battleRewardFormula}</p>
-                              <p className="mt-1 text-xs leading-snug text-slate-200">
-                                {t.battleBase}: <span className="font-semibold text-amber-300">{battleRewardRange.min}</span>
-                                {" · "}
-                                {t.battleHpBonus}: <span className="font-semibold text-emerald-300">+HP</span>
-                                {" · "}
-                                {t.battleCost}: <span className="font-semibold text-rose-300">-{BATTLE_ENTRY_COST} {t.coins}</span>
-                              </p>
-                              <p className="mt-1 text-[10px] leading-snug text-slate-300/75">{t.rewardInverseTip}</p>
                             </div>
                           </div>
                         )}
