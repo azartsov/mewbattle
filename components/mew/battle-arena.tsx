@@ -912,11 +912,11 @@ export function BattleArena({
             {pendingBossTurn ? t.bossTurn : t.yourTurn}
           </div>
         </div>
-        <p className="mb-3 text-xs text-muted-foreground">
+        <p className="mb-2 text-xs text-muted-foreground">
           {pendingBossTurn ? t.bossTurnCountdown : t.dragOrTapPlayer}
         </p>
 
-        <div ref={arenaRef} className="relative flex flex-col items-center gap-3">
+        <div ref={arenaRef} className="relative flex flex-col items-center gap-2">
           {lightningFx && (
             <svg
               className="pointer-events-none absolute inset-0 z-30"
@@ -1035,7 +1035,7 @@ export function BattleArena({
               </>
             )}
             {bossCountdownTick !== null && (
-              <div className="pointer-events-none absolute -bottom-8 left-1/2 z-50 -translate-x-1/2">
+              <div className="pointer-events-none absolute -bottom-7 left-1/2 z-50 -translate-x-1/2">
                 <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-rose-400/80 bg-rose-900/80 text-xl font-bold text-rose-100 shadow-lg">
                   {bossCountdownTick}
                 </span>
@@ -1059,7 +1059,7 @@ export function BattleArena({
             />
           </div>
 
-          <div className={`flex w-full max-w-xl items-center gap-2 rounded-lg border px-2 py-1 ${bossTurnActive ? "border-rose-400/35 bg-rose-500/10" : "border-sky-400/35 bg-sky-500/10"}`}>
+          <div className={`flex w-full max-w-xl items-center gap-1.5 rounded-lg border px-2 py-1 ${bossTurnActive ? "border-rose-400/35 bg-rose-500/10" : "border-sky-400/35 bg-sky-500/10"}`}>
             <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full border ${bossTurnActive ? "border-rose-300/55 bg-rose-400/20 text-rose-100" : "border-border/50 bg-background/40 text-muted-foreground"}`}>
               <Skull className="h-3.5 w-3.5" />
             </span>
@@ -1079,7 +1079,7 @@ export function BattleArena({
             </span>
           </div>
 
-          <div className="flex w-full flex-wrap items-start justify-center gap-2">
+          <div className="flex w-full flex-wrap items-start justify-center gap-1.5 sm:gap-2">
             {fighters.map((fighter) => (
               <div
                 key={fighter.id}

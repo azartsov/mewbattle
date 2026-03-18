@@ -79,7 +79,7 @@ export function BattleFighterCard({
         if (!isDead) onTap?.()
       }}
       className={cn(
-        "relative w-[140px] sm:w-[152px] overflow-hidden rounded-xl border transition-all",
+        "relative w-[126px] sm:w-[138px] overflow-hidden rounded-xl border transition-all",
         variant === "storybook"
           ? "bg-[#fffaf2]/92 shadow-[0_12px_24px_rgba(110,89,62,0.18)]"
           : "bg-card/95 shadow-[0_8px_22px_rgba(2,6,23,0.35)]",
@@ -95,7 +95,7 @@ export function BattleFighterCard({
       <div className="pointer-events-none absolute inset-0 opacity-95" style={{ backgroundImage: visualTheme.frameBackground }} />
       <div className="relative">
         <div className="absolute inset-0" style={{ backgroundImage: visualTheme.artBackground }} />
-        <div className="relative h-[92px] overflow-hidden bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.18),_transparent_62%)]">
+        <div className="relative h-[74px] overflow-hidden bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.18),_transparent_62%)] sm:h-[80px]">
           <Image
             src={imgSrc}
             alt={fighter.name}
@@ -194,44 +194,44 @@ export function BattleFighterCard({
         </Dialog>
       </div>
 
-      <div className="relative space-y-1.5 p-2" style={{ backgroundImage: visualTheme.bodyBackground }}>
+      <div className="relative space-y-1 p-1.5 sm:p-2" style={{ backgroundImage: visualTheme.bodyBackground }}>
         {CARD_META_JA[baseId] && (
           <p className={cn("text-[8px] font-light tracking-[0.15em] leading-none mb-0.5", monogramClass)}>{CARD_META_JA[baseId]}</p>
         )}
         <div className={cn(
-          "truncate text-xs font-semibold",
+          "truncate text-[11px] font-semibold sm:text-xs",
           variant === "storybook" ? "text-[#443429] drop-shadow-[0_1px_0_rgba(255,255,255,0.38)]" : "text-foreground",
         )}>{displayName}</div>
 
-        <div className="flex flex-nowrap items-center gap-1 overflow-hidden text-[9px] font-medium">
+        <div className="flex flex-nowrap items-center gap-1 overflow-hidden text-[8px] font-medium sm:text-[9px]">
           <span className={badgeStyles.attackCompact}>ATK {fighter.attack}</span>
           <span className={badgeStyles.healthCompact}>HP {fighter.currentHealth}</span>
         </div>
 
-        <div className="min-h-[20px]">
-          <span className={cn(badgeStyles.abilityCompact, "text-[9px] px-1.5 py-0.5")}>
+        <div className="min-h-[18px] sm:min-h-[20px]">
+          <span className={cn(badgeStyles.abilityCompact, "px-1 py-0.5 text-[8px] sm:px-1.5 sm:text-[9px]")}>
             <span className="truncate">{badgeAbility}</span>
           </span>
         </div>
 
         {role === "ally" && (
-          <div className="flex min-h-[18px] flex-wrap items-start gap-0.5">
+          <div className="flex min-h-[16px] flex-wrap items-start gap-0.5 sm:min-h-[18px]">
             {fighter.bossAffinities && fighter.bossAffinities.length > 0 ? (
               fighter.bossAffinities.map((affinity) => (
                 <span
                   key={`${fighter.id}-${affinity.bossType}`}
-                  className={cn("inline-flex items-center rounded border px-1 py-0.5 text-[9px] font-semibold tracking-[0.08em]", bossTypeTheme[affinity.bossType].chipClass)}
+                  className={cn("inline-flex items-center rounded border px-1 py-0.5 text-[8px] font-semibold tracking-[0.08em] sm:text-[9px]", bossTypeTheme[affinity.bossType].chipClass)}
                 >
                   {getBossAffinityChipLabel(affinity.bossType, language)}Lv{affinity.level}
                 </span>
               ))
             ) : (
-              <span className="invisible inline-flex items-center gap-0.5 rounded border px-1 py-0.5 text-[9px]">Lv0</span>
+              <span className="invisible inline-flex items-center gap-0.5 rounded border px-1 py-0.5 text-[8px] sm:text-[9px]">Lv0</span>
             )}
           </div>
         )}
 
-        <div className="h-1.5 w-full overflow-hidden rounded bg-slate-800/70">
+        <div className="h-1 w-full overflow-hidden rounded bg-slate-800/70 sm:h-1.5">
           <div
             className={cn(
               "h-full transition-all",
