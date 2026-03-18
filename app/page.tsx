@@ -50,7 +50,7 @@ import { PreAuthUkiyoeSplash } from "@/components/mew/pre-auth-ukiyoe-splash"
 import { VersionHistoryDialog } from "@/components/mew/version-history-dialog"
 import { useMewI18n } from "@/lib/mew-i18n"
 import { pickRandomBoss, scaleBossForPlayer } from "@/lib/mew-bosses"
-import { APP_BUILD_GENERATED_AT, APP_VERSION } from "@/lib/version"
+import { APP_BUILD_GENERATED_AT, APP_GIT_HASH, APP_VERSION } from "@/lib/version"
 import { pickCatCodexQuote } from "@/lib/cat-codex"
 import { CardDesignProvider, type CardDesignVariant } from "@/lib/mew-card-design"
 import { DEFAULT_CARD_DESIGN, loadLocalCardDesign, loadUserCardDesign, normalizeCardDesign, saveLocalCardDesign, saveUserCardDesign } from "@/lib/user-settings"
@@ -209,6 +209,7 @@ export default function MewBattlePage() {
   const userId = user?.uid ?? null
   const displayedAppVersion = APP_VERSION
   const displayedBuildDate = APP_BUILD_GENERATED_AT.slice(0, 10)
+  const displayedGitHash = APP_GIT_HASH.slice(0, 8)
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -989,7 +990,10 @@ export default function MewBattlePage() {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={() => setShowVersionHistory(true)}>
-                  v{displayedAppVersion}
+                  <div className="flex items-center gap-2">
+                    <span>v{displayedAppVersion}</span>
+                    <span className="text-xs text-muted-foreground">#{displayedGitHash}</span>
+                  </div>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
