@@ -34,16 +34,18 @@ export const APP_BUILD_GENERATED_AT = "${generatedAt}"
 fs.writeFileSync(versionPath, newVersionContent, 'utf-8');
 
 const serviceWorkerContent = fs.readFileSync(serviceWorkerPath, 'utf-8');
+if (!/const APP_VERSION = "0\.\d+";/.test(serviceWorkerContent)) {
+  throw new Error('Could not locate service worker version marker');
+}
+
 const newServiceWorkerContent = serviceWorkerContent.replace(
   /const APP_VERSION = "0\.\d+";/,
   `const APP_VERSION = "0.${minorVersion}";`
 );
 
-if (newServiceWorkerContent === serviceWorkerContent) {
-  throw new Error('Could not update service worker version');
+if (newServiceWorkerContent !== serviceWorkerContent) {
+  fs.writeFileSync(serviceWorkerPath, newServiceWorkerContent, 'utf-8');
 }
-
-fs.writeFileSync(serviceWorkerPath, newServiceWorkerContent, 'utf-8');
 fs.writeFileSync(
   versionManifestPath,
   `${JSON.stringify({ version: `0.${minorVersion}`, gitCommitCount, gitHash: gitShortHash, generatedAt }, null, 2)}\n`,
