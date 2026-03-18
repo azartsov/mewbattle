@@ -11,6 +11,32 @@ interface VersionHistoryDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
+function compareVersionsDesc(left: string, right: string) {
+  const leftParts = left.split(".").map((part) => Number.parseInt(part, 10) || 0)
+  const rightParts = right.split(".").map((part) => Number.parseInt(part, 10) || 0)
+  const maxLength = Math.max(leftParts.length, rightParts.length)
+
+  for (let index = 0; index < maxLength; index += 1) {
+    const leftPart = leftParts[index] ?? 0
+    const rightPart = rightParts[index] ?? 0
+    if (leftPart !== rightPart) {
+      return rightPart - leftPart
+    }
+  }
+
+  return 0
+}
+
+function sortVersionHistory(entries: VersionHistoryEntry[]) {
+  return [...entries].sort((left, right) => {
+    if (left.date !== right.date) {
+      return right.date.localeCompare(left.date)
+    }
+
+    return compareVersionsDesc(left.version, right.version)
+  })
+}
+
 function groupVersionHistoryByDate(entries: VersionHistoryEntry[]) {
   return entries.reduce<Array<{ date: string; entries: VersionHistoryEntry[] }>>((groups, entry) => {
     const currentGroup = groups[groups.length - 1]
@@ -78,7 +104,7 @@ function summarizeDayCompact(entries: VersionHistoryEntry[], language: "ru" | "e
 
 export function VersionHistoryDialog({ open, onOpenChange }: VersionHistoryDialogProps) {
   const { language, t } = useMewI18n()
-  const dateGroups = groupVersionHistoryByDate(VERSION_HISTORY)
+  const dateGroups = groupVersionHistoryByDate(sortVersionHistory(VERSION_HISTORY))
   const [expandedDates, setExpandedDates] = useState<Record<string, boolean>>({})
 
   return (
