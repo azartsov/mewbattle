@@ -19,10 +19,11 @@ interface MewCardFaceProps {
   card: MewCard
   owned?: number
   compact?: boolean
+  previewCompact?: boolean
   className?: string
 }
 
-export function MewCardFace({ card, owned, compact = false, className }: MewCardFaceProps) {
+export function MewCardFace({ card, owned, compact = false, previewCompact = false, className }: MewCardFaceProps) {
   const { t, language } = useMewI18n()
   const { variant } = useCardDesign()
   const theme = getCardRarityTheme(card.rarity, variant)
@@ -38,6 +39,7 @@ export function MewCardFace({ card, owned, compact = false, className }: MewCard
   const sellPrice = getCardSellPrice(card)
   const visualTheme = getCardVisualTheme(card.id, variant)
   const monogramClass = getCardMonogramClass(card.id, variant)
+  const compactLayout = compact || previewCompact
 
   const bossTypeLabel = (bossType: "raven" | "dog" | "rat") => {
     if (bossType === "raven") return t.bossRaven
@@ -61,7 +63,10 @@ export function MewCardFace({ card, owned, compact = false, className }: MewCard
 
       <div className="relative border-b border-black/20">
         <div className="absolute inset-0" style={{ backgroundImage: visualTheme.artBackground }} />
-        <div className="relative aspect-[5/4] overflow-hidden bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.2),_transparent_62%)]">
+        <div className={cn(
+          "relative overflow-hidden bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.2),_transparent_62%)]",
+          previewCompact ? "aspect-[5/3]" : "aspect-[5/4]",
+        )}>
           <Image
             src={imgSrc}
             alt={card.name}
@@ -81,7 +86,7 @@ export function MewCardFace({ card, owned, compact = false, className }: MewCard
         <div className="absolute inset-0 bg-gradient-to-t from-black/48 via-black/6 to-transparent" />
         <span
           className={cn(
-            "absolute right-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]",
+            previewCompact ? "absolute right-1.5 top-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em]" : "absolute right-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]",
             theme.badge,
           )}
         >
@@ -93,10 +98,13 @@ export function MewCardFace({ card, owned, compact = false, className }: MewCard
               type="button"
               aria-label={t.details}
               title={t.details}
-              className="absolute left-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/25 bg-black/45 text-slate-100 transition-colors hover:bg-black/65"
+              className={cn(
+                "absolute inline-flex items-center justify-center rounded-full border border-white/25 bg-black/45 text-slate-100 transition-colors hover:bg-black/65",
+                previewCompact ? "left-1.5 top-1.5 h-5 w-5" : "left-2 top-2 h-6 w-6",
+              )}
               onClick={(event) => event.stopPropagation()}
             >
-              <Info className="h-3.5 w-3.5" />
+              <Info className={previewCompact ? "h-3 w-3" : "h-3.5 w-3.5"} />
             </button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
@@ -159,46 +167,54 @@ export function MewCardFace({ card, owned, compact = false, className }: MewCard
         </Dialog>
       </div>
 
-      <div className={cn("relative space-y-2 p-3", compact && "space-y-1.5 p-2.5")} style={{ backgroundImage: visualTheme.bodyBackground }}>
+      <div className={cn(
+        "relative space-y-2 p-3",
+        compact && "space-y-1.5 p-2.5",
+        previewCompact && "space-y-1 p-1.5",
+      )} style={{ backgroundImage: visualTheme.bodyBackground }}>
         <div className="flex items-start justify-between gap-2">
           <div>
-            {CARD_META_JA[card.id] && (
+            {!previewCompact && CARD_META_JA[card.id] && (
               <p className={cn("text-[9px] font-light tracking-[0.18em] leading-none mb-0.5", monogramClass)}>{CARD_META_JA[card.id]}</p>
             )}
             <h4 className={cn(
               "font-semibold leading-tight",
-              compact ? "text-sm" : "text-base",
+              previewCompact ? "text-[11px]" : compactLayout ? "text-sm" : "text-base",
               variant === "storybook" ? "text-[#443429] drop-shadow-[0_1px_0_rgba(255,255,255,0.38)]" : "text-foreground",
             )}>{displayName}</h4>
           </div>
           {typeof owned === "number" && (
-            <span className={badgeStyles.ownedCompact}>
+            <span className={cn(badgeStyles.ownedCompact, previewCompact && "px-1.5 py-0.5 text-[9px]")}>
               x{owned}
             </span>
           )}
         </div>
 
-        <div className="flex flex-nowrap items-center gap-1.5 overflow-hidden text-[10px] font-medium">
+        <div className={cn("flex flex-nowrap items-center overflow-hidden font-medium", previewCompact ? "gap-1 text-[9px]" : "gap-1.5 text-[10px]")}>
           <span className={badgeStyles.attackCompact}>ATK {card.attack}</span>
           <span className={badgeStyles.healthCompact}>HP {card.health}</span>
         </div>
 
-        <div className="flex min-h-[22px] flex-wrap items-center gap-1.5">
+        <div className={cn("flex flex-wrap items-center", previewCompact ? "min-h-[16px] gap-1" : "min-h-[22px] gap-1.5")}>
           {affinities.length === 0 && (
-            <span className="invisible inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px]">Lv0</span>
+            <span className={cn("invisible inline-flex items-center rounded-md border", previewCompact ? "gap-0.5 px-1 py-0.5 text-[9px]" : "gap-1 px-1.5 py-0.5 text-[10px]")}>Lv0</span>
           )}
           {affinities.map((affinity) => (
             <span
               key={`${card.id}-${affinity.bossType}-chip`}
-              className={cn("inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold tracking-[0.08em]", bossTypeTheme[affinity.bossType].chipClass)}
+              className={cn(
+                "inline-flex items-center rounded-md border font-semibold tracking-[0.08em]",
+                previewCompact ? "px-1 py-0.5 text-[9px]" : "px-1.5 py-0.5 text-[10px]",
+                bossTypeTheme[affinity.bossType].chipClass,
+              )}
             >
               {getBossAffinityChipLabel(affinity.bossType, language)}Lv{affinity.level}
             </span>
           ))}
         </div>
 
-        <div className="min-h-[22px]">
-          <span className={cn(badgeStyles.abilityCompact, compact ? "text-[9px] px-1.5 py-0.5" : "") }>
+        <div className={previewCompact ? "min-h-[16px]" : "min-h-[22px]"}>
+          <span className={cn(badgeStyles.abilityCompact, compactLayout ? "text-[9px] px-1.5 py-0.5" : "", previewCompact && "text-[8px] px-1 py-0.5") }>
             <span className="truncate">{badgeAbility}</span>
           </span>
         </div>

@@ -226,7 +226,7 @@ export default function MewBattlePage() {
     const handleAppInstalled = () => {
       setPwaInstalled(true)
       setDeferredInstallPrompt(null)
-      setInstallDialogMessage(t.pwaAlreadyInstalled)
+      setInstallDialogMessage(t.pwaInstalledSuccess)
       setShowInstallDialog(true)
     }
 
@@ -240,7 +240,7 @@ export default function MewBattlePage() {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
       window.removeEventListener("appinstalled", handleAppInstalled)
     }
-  }, [t.pwaAlreadyInstalled])
+  }, [t.pwaInstalledSuccess])
 
   useEffect(() => {
     if (!pwaInstalled || typeof window === "undefined") return
@@ -1316,7 +1316,7 @@ export default function MewBattlePage() {
                             </p>
                             <div className="flex flex-wrap gap-1 rounded-xl border border-border/60 bg-card/40 p-1.5">
                               {previewDeckCards.map((card, idx) => (
-                                <MewCardFace key={`preview-${battleDeckSlot}-${card.id}-${idx}`} card={card} compact className="max-w-[96px] sm:max-w-[110px]" />
+                                <MewCardFace key={`preview-${battleDeckSlot}-${card.id}-${idx}`} card={card} compact previewCompact className="max-w-[88px] sm:max-w-[96px]" />
                               ))}
                             </div>
                             <div className="battle-reward-box-glow rounded-xl border px-2.5 py-1.5">

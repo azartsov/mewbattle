@@ -188,6 +188,7 @@ type MewTranslations = {
   pwaInstallTitle: string
   pwaInstallReady: string
   pwaInstallDismissed: string
+  pwaInstalledSuccess: string
   pwaAlreadyInstalled: string
   pwaReinstallHint: string
   pwaIosInstallHint: string
@@ -390,6 +391,7 @@ const translations: Record<MewLanguage, MewTranslations> = {
     pwaInstallTitle: "Install app",
     pwaInstallReady: "The browser is ready to install MewBattle as an app.",
     pwaInstallDismissed: "The installation prompt was closed. You can open it again from the menu when the browser allows it.",
+    pwaInstalledSuccess: "MewBattle has been installed on this device.",
     pwaAlreadyInstalled: "MewBattle is already installed on this device.",
     pwaReinstallHint: "To reinstall it, remove the current app from your device, then open MewBattle in the browser and run installation again.",
     pwaIosInstallHint: "On iPhone or iPad, open the Share menu in Safari and choose Add to Home Screen.",
@@ -590,6 +592,7 @@ const translations: Record<MewLanguage, MewTranslations> = {
     pwaInstallTitle: "Установка приложения",
     pwaInstallReady: "Браузер готов установить MewBattle как приложение.",
     pwaInstallDismissed: "Окно установки было закрыто. Можно открыть его снова из меню, когда браузер это позволит.",
+    pwaInstalledSuccess: "MewBattle успешно установлен на это устройство.",
     pwaAlreadyInstalled: "MewBattle уже установлен на этом устройстве.",
     pwaReinstallHint: "Чтобы переустановить игру, удалите текущее приложение с устройства, затем откройте MewBattle в браузере и запустите установку снова.",
     pwaIosInstallHint: "На iPhone или iPad откройте меню Поделиться в Safari и выберите На экран Домой.",
