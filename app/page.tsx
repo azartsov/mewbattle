@@ -169,6 +169,7 @@ export default function MewBattlePage() {
   const [showInstallDialog, setShowInstallDialog] = useState(false)
   const [installDialogMessage, setInstallDialogMessage] = useState<string | null>(null)
   const [availableVersion, setAvailableVersion] = useState<string | null>(null)
+  const [runtimeVersionManifest, setRuntimeVersionManifest] = useState<VersionManifest | null>(null)
   const [showUpdateDialog, setShowUpdateDialog] = useState(false)
   const [applyingUpdate, setApplyingUpdate] = useState(false)
   const [tab, setTab] = useState<TabKey>("collection")
@@ -207,6 +208,8 @@ export default function MewBattlePage() {
   const [savingGameState, setSavingGameState] = useState(false)
 
   const userId = user?.uid ?? null
+  const displayedAppVersion = runtimeVersionManifest?.version ?? APP_VERSION
+  const displayedBuildDate = runtimeVersionManifest?.generatedAt?.slice(0, 10)
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -244,6 +247,34 @@ export default function MewBattlePage() {
   }, [t.pwaInstalledSuccess])
 
   useEffect(() => {
+    const abortController = new AbortController()
+    let cancelled = false
+
+    const loadRuntimeVersionManifest = async () => {
+      try {
+        const response = await fetch(`/version.json?ts=${Date.now()}`, {
+          cache: "no-store",
+          signal: abortController.signal,
+        })
+        if (!response.ok) return
+
+        const manifest = await response.json() as VersionManifest
+        if (cancelled || !manifest.version) return
+        setRuntimeVersionManifest(manifest)
+      } catch {
+        // Ignore version manifest fetch failures.
+      }
+    }
+
+    void loadRuntimeVersionManifest()
+
+    return () => {
+      cancelled = true
+      abortController.abort()
+    }
+  }, [])
+
+  useEffect(() => {
     if (!pwaInstalled || typeof window === "undefined") return
 
     const abortController = new AbortController()
@@ -259,8 +290,9 @@ export default function MewBattlePage() {
 
         const manifest = await response.json() as VersionManifest
         if (cancelled || !manifest.version) return
+        setRuntimeVersionManifest(manifest)
 
-        if (isNewerVersion(manifest.version, APP_VERSION)) {
+        if (isNewerVersion(manifest.version, displayedAppVersion)) {
           setAvailableVersion(manifest.version)
           setShowUpdateDialog(true)
         }
@@ -275,7 +307,7 @@ export default function MewBattlePage() {
       cancelled = true
       abortController.abort()
     }
-  }, [pwaInstalled])
+  }, [displayedAppVersion, pwaInstalled])
 
   useEffect(() => {
     setCardDesign(loadLocalCardDesign())
@@ -987,7 +1019,7 @@ export default function MewBattlePage() {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={() => setShowVersionHistory(true)}>
-                  v{APP_VERSION}
+                  v{displayedAppVersion}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -1360,7 +1392,12 @@ export default function MewBattlePage() {
         </DialogContent>
       </Dialog>
 
-      <VersionHistoryDialog open={showVersionHistory} onOpenChange={setShowVersionHistory} />
+      <VersionHistoryDialog
+        open={showVersionHistory}
+        onOpenChange={setShowVersionHistory}
+        currentVersion={displayedAppVersion}
+        currentBuildDate={displayedBuildDate}
+      />
 
       <Dialog open={showBattleStatsDialog} onOpenChange={setShowBattleStatsDialog}>
         <DialogContent className="max-w-2xl border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
@@ -1416,8 +1453,8 @@ export default function MewBattlePage() {
           <div className="space-y-3 text-sm text-slate-200/85">
             <p>{t.pwaUpdateBody}</p>
             <div className="rounded-xl border border-amber-400/20 bg-amber-500/10 p-3 text-xs text-amber-100/90">
-              <p>{t.pwaCurrentVersion}: v{APP_VERSION}</p>
-              <p>{t.pwaLatestVersion}: v{availableVersion ?? APP_VERSION}</p>
+              <p>{t.pwaCurrentVersion}: v{displayedAppVersion}</p>
+              <p>{t.pwaLatestVersion}: v{availableVersion ?? displayedAppVersion}</p>
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-2">

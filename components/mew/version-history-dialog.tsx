@@ -9,6 +9,8 @@ import { VERSION_HISTORY, type VersionHistoryEntry } from "@/lib/version-history
 interface VersionHistoryDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  currentVersion?: string
+  currentBuildDate?: string
 }
 
 function compareVersionsDesc(left: string, right: string) {
@@ -102,7 +104,7 @@ function summarizeDayCompact(entries: VersionHistoryEntry[], language: "ru" | "e
   return `${prefix}${visible.join(", ")}${suffix}.`
 }
 
-export function VersionHistoryDialog({ open, onOpenChange }: VersionHistoryDialogProps) {
+export function VersionHistoryDialog({ open, onOpenChange, currentVersion, currentBuildDate }: VersionHistoryDialogProps) {
   const { language, t } = useMewI18n()
   const dateGroups = groupVersionHistoryByDate(sortVersionHistory(VERSION_HISTORY))
   const [expandedDates, setExpandedDates] = useState<Record<string, boolean>>({})
@@ -120,9 +122,12 @@ export function VersionHistoryDialog({ open, onOpenChange }: VersionHistoryDialo
             {dateGroups.map((group) => {
               const firstVersion = group.entries[0]?.version
               const lastVersion = group.entries[group.entries.length - 1]?.version
-              const versionLabel = firstVersion === lastVersion
-                ? `v${firstVersion}`
-                : `v${firstVersion} - v${lastVersion}`
+              const resolvedFirstVersion = currentVersion && currentBuildDate === group.date && firstVersion && compareVersionsDesc(currentVersion, firstVersion) < 0
+                ? currentVersion
+                : firstVersion
+              const versionLabel = resolvedFirstVersion === lastVersion
+                ? `v${resolvedFirstVersion}`
+                : `v${resolvedFirstVersion} - v${lastVersion}`
               const dateLabel = formatLocalizedDate(group.date, language)
               const summaryLines = summarizeEntries(group.entries, language)
               const compactDaySummary = summarizeDayCompact(group.entries, language)
