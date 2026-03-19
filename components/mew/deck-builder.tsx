@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Check, Pencil, Save, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -10,6 +10,8 @@ import { MewCardFace } from "@/components/mew/mew-card-face"
 import { PawLoader } from "@/components/mew/paw-loader"
 import { useMewI18n } from "@/lib/mew-i18n"
 import type { DeckSlotKey } from "@/lib/mew-firestore"
+
+const MAX_DECK_NAME_LENGTH = 15
 
 interface DeckBuilderProps {
   cards: MewCard[]
@@ -26,9 +28,11 @@ interface DeckBuilderProps {
   selectedDeckSlot: DeckSlotKey
   initialDeckName: string
   initialDeckCardIds: string[]
+  savedDeckName?: string
+  savedDeckCardIds?: string[]
   onSelectDeckSlot: (slot: DeckSlotKey) => void
   onSaveDeck: (name: string, cardIds: string[]) => Promise<void>
-  onDraftChange?: (name: string, cardIds: string[]) => void
+  onDraftChange?: (slot: DeckSlotKey, name: string, cardIds: string[]) => void
   onDirtyChange?: (isDirty: boolean) => void
 }
 
@@ -40,6 +44,8 @@ export function DeckBuilder({
   selectedDeckSlot,
   initialDeckName,
   initialDeckCardIds,
+  savedDeckName,
+  savedDeckCardIds,
   onSelectDeckSlot,
   onSaveDeck,
   onDraftChange,
@@ -47,18 +53,20 @@ export function DeckBuilder({
 }: DeckBuilderProps) {
   const { t } = useMewI18n()
   const [deckName, setDeckName] = useState(initialDeckName)
+  const [deckNameDraft, setDeckNameDraft] = useState(initialDeckName)
   const [deck, setDeck] = useState<string[]>(initialDeckCardIds.slice(0, maxDeckSize))
   const [saving, setSaving] = useState(false)
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
   const [editingDeckName, setEditingDeckName] = useState(false)
   const [pendingEditSlot, setPendingEditSlot] = useState<DeckSlotKey | null>(null)
+  const hydratedSlotRef = useRef<DeckSlotKey>(selectedDeckSlot)
 
-  useEffect(() => {
+  const sanitizeDeckCardIds = (cardIds: string[]) => {
     const ownedById = new Map(userCards.map((card) => [card.cardId, card.quantity]))
     const usedById = new Map<string, number>()
     const safeCards: string[] = []
 
-    for (const cardId of initialDeckCardIds) {
+    for (const cardId of cardIds) {
       const ownedQty = ownedById.get(cardId) ?? 0
       if (ownedQty <= 0) continue
       const usedQty = usedById.get(cardId) ?? 0
@@ -67,17 +75,30 @@ export function DeckBuilder({
       safeCards.push(cardId)
     }
 
+    return safeCards.slice(0, maxDeckSize)
+  }
+
+  useEffect(() => {
+    if (hydratedSlotRef.current === selectedDeckSlot) return
+
+    hydratedSlotRef.current = selectedDeckSlot
     setDeckName(initialDeckName)
-    setDeck(safeCards.slice(0, maxDeckSize))
+    setDeckNameDraft(initialDeckName)
+    setDeck(sanitizeDeckCardIds(initialDeckCardIds))
     setSelectedCardId(null)
     setEditingDeckName(false)
-  }, [initialDeckCardIds, initialDeckName, maxDeckSize, userCards])
+  }, [initialDeckCardIds, initialDeckName, selectedDeckSlot])
+
+  useEffect(() => {
+    setDeck((prev) => sanitizeDeckCardIds(prev))
+  }, [maxDeckSize, userCards])
 
   useEffect(() => {
     if (pendingEditSlot !== selectedDeckSlot) return
+    setDeckNameDraft(deckName)
     setEditingDeckName(true)
     setPendingEditSlot(null)
-  }, [pendingEditSlot, selectedDeckSlot])
+  }, [deckName, pendingEditSlot, selectedDeckSlot])
 
   const ownedCardsById = useMemo(() => new Map(userCards.map((c) => [c.cardId, c.quantity])), [userCards])
   const ownedCardIds = useMemo(() => new Set(userCards.filter((c) => c.quantity > 0).map((c) => c.cardId)), [userCards])
@@ -109,37 +130,44 @@ export function DeckBuilder({
   const handleSave = async () => {
     setSaving(true)
     try {
-      await onSaveDeck(deckName.trim().slice(0, 10) || "Main Deck", deck.filter(Boolean))
+      await onSaveDeck(deckName.trim().slice(0, MAX_DECK_NAME_LENGTH) || "Main Deck", deck.filter(Boolean))
     } finally {
       setSaving(false)
     }
   }
 
   const handleFinishDeckNameEdit = () => {
-    const nextName = deckName.slice(0, 10)
+    const nextName = deckNameDraft.slice(0, MAX_DECK_NAME_LENGTH)
     setEditingDeckName(false)
     setDeckName(nextName)
+    setDeckNameDraft(nextName)
+  }
+
+  const handleCancelDeckNameEdit = () => {
+    setEditingDeckName(false)
+    setDeckNameDraft(deckName)
   }
 
   const deckCards = deck.map((id) => cards.find((c) => c.id === id) ?? null)
   const draftCardIds = useMemo(() => deck.filter((id): id is string => Boolean(id)), [deck])
 
   const isDirty = useMemo(() => {
-    const initialName = initialDeckName.trim()
+    const initialName = (savedDeckName ?? initialDeckName).trim()
     const draftName = deckName.trim()
     if (initialName !== draftName) return true
 
-    if (draftCardIds.length !== initialDeckCardIds.length) return true
+    const baselineCardIds = savedDeckCardIds ?? initialDeckCardIds
+    if (draftCardIds.length !== baselineCardIds.length) return true
     for (let i = 0; i < draftCardIds.length; i += 1) {
-      if (draftCardIds[i] !== initialDeckCardIds[i]) return true
+      if (draftCardIds[i] !== baselineCardIds[i]) return true
     }
 
     return false
-  }, [deckName, draftCardIds, initialDeckCardIds, initialDeckName])
+  }, [deckName, draftCardIds, initialDeckCardIds, initialDeckName, savedDeckCardIds, savedDeckName])
 
   useEffect(() => {
-    onDraftChange?.(deckName, draftCardIds)
-  }, [deckName, draftCardIds, onDraftChange])
+    onDraftChange?.(selectedDeckSlot, deckName, draftCardIds)
+  }, [deckName, draftCardIds, onDraftChange, selectedDeckSlot])
 
   useEffect(() => {
     onDirtyChange?.(isDirty)
@@ -222,13 +250,21 @@ export function DeckBuilder({
                 <div className="flex items-center gap-1">
                   {isEditing ? (
                     <Input
-                      value={deckName}
-                      maxLength={10}
-                      onChange={(event) => setDeckName(event.target.value.slice(0, 10))}
-                      onBlur={() => {
-                        handleFinishDeckNameEdit()
+                      value={deckNameDraft}
+                      maxLength={MAX_DECK_NAME_LENGTH}
+                      onChange={(event) => setDeckNameDraft(event.target.value.slice(0, MAX_DECK_NAME_LENGTH))}
+                      onBlur={handleFinishDeckNameEdit}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault()
+                          handleFinishDeckNameEdit()
+                        }
+                        if (event.key === "Escape") {
+                          event.preventDefault()
+                          handleCancelDeckNameEdit()
+                        }
                       }}
-                      className="h-7 w-[118px] rounded-full px-2 text-[12px]"
+                      className="h-7 w-[148px] rounded-full px-2 text-[12px]"
                       placeholder={t.deckName}
                       autoFocus
                     />
@@ -236,7 +272,7 @@ export function DeckBuilder({
                     <Button
                       size="sm"
                       variant={isSelected ? "default" : "secondary"}
-                      className="h-7 w-[118px] justify-center rounded-full px-2 text-[12px]"
+                      className="h-7 w-[148px] justify-center rounded-full px-2 text-[12px]"
                       onClick={() => onSelectDeckSlot(deckButton.slot)}
                     >
                       <span className="truncate">{visibleLabel}</span>
@@ -246,6 +282,9 @@ export function DeckBuilder({
                     size="icon"
                     variant="ghost"
                     className="h-7 w-7 rounded-full"
+                    onMouseDown={(event) => {
+                      if (isEditing) event.preventDefault()
+                    }}
                     onClick={() => {
                       if (!isSelected) {
                         setPendingEditSlot(deckButton.slot)
@@ -256,6 +295,7 @@ export function DeckBuilder({
                         handleFinishDeckNameEdit()
                         return
                       }
+                      setDeckNameDraft(deckName)
                       setEditingDeckName(true)
                     }}
                     aria-label={isEditing ? t.saveDeck : t.deckName}

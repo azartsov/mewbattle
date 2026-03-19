@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import { BookOpen, CircleHelp, Download, Gift, Languages, LogOut, MoreVertical, PawPrint, Play, RotateCcw, Swords, TrendingUp, Trophy, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -199,7 +199,7 @@ export default function MewBattlePage() {
   const [showBattleStatsDialog, setShowBattleStatsDialog] = useState(false)
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [leaderboardLoading, setLeaderboardLoading] = useState(false)
-  const [deckDraft, setDeckDraft] = useState<{ name: string; cardIds: string[] } | null>(null)
+  const [deckDrafts, setDeckDrafts] = useState<Partial<Record<DeckSlotKey, { name: string; cardIds: string[] }>>>({})
   const [deckDirty, setDeckDirty] = useState(false)
   const [showUnsavedDeckDialog, setShowUnsavedDeckDialog] = useState(false)
   const [pendingTabSwitch, setPendingTabSwitch] = useState<TabKey | null>(null)
@@ -418,6 +418,34 @@ export default function MewBattlePage() {
     () => decks.find((deck) => deck.slot === selectedDeckSlot) ?? decks[0] ?? null,
     [decks, selectedDeckSlot],
   )
+  const selectedDeckDraft = deckDrafts[selectedDeckSlot] ?? null
+
+  const decksBySlot = useMemo(() => {
+    const map = new Map<DeckSlotKey, Deck>()
+    for (const deck of decks) {
+      if (!deck.slot) continue
+      map.set(deck.slot, deck)
+    }
+    return map
+  }, [decks])
+
+  const hasAnyDeckDraftChanges = useMemo(() => {
+    return DECK_SLOT_KEYS.some((slot) => {
+      const draft = deckDrafts[slot]
+      if (!draft) return false
+
+      const savedDeck = decksBySlot.get(slot)
+      const savedName = (savedDeck?.deckName ?? getDefaultDeckName(slot)).trim()
+      const savedCardIds = savedDeck?.cards ?? []
+
+      if (draft.name.trim() !== savedName) return true
+      if (draft.cardIds.length !== savedCardIds.length) return true
+      for (let i = 0; i < draft.cardIds.length; i += 1) {
+        if (draft.cardIds[i] !== savedCardIds[i]) return true
+      }
+      return false
+    })
+  }, [deckDrafts, decksBySlot])
 
   const battleLocked = battleStage === "preparing" || battleStage === "fighting"
   const waitingForBattleDeckChoice = battleStage === "preparing" && !battleDeckSlot
@@ -432,25 +460,30 @@ export default function MewBattlePage() {
         ? t.loadingData
         : null
 
+  const saveDeckForSlot = useCallback(async (slot: DeckSlotKey, name: string, cardIds: string[]) => {
+    if (!userId) return
+    await saveDeckToSlot(userId, slot, name, cardIds, profile?.maxDeckSize ?? 3)
+  }, [profile?.maxDeckSize, userId])
+
   const handleSaveDeck = useCallback(async (name: string, cardIds: string[]) => {
     if (!userId) return
-    await saveDeckToSlot(userId, selectedDeckSlot, name, cardIds, profile?.maxDeckSize ?? 3)
+    await saveDeckForSlot(selectedDeckSlot, name, cardIds)
     await loadData()
     setMessage(t.deckSaved)
-  }, [loadData, profile?.maxDeckSize, selectedDeckSlot, t.deckSaved, userId])
+  }, [loadData, saveDeckForSlot, selectedDeckSlot, t.deckSaved, userId])
 
   const handleTabChange = useCallback(async (nextTab: TabKey) => {
     if (battleLocked && nextTab !== "battle") return
     if (nextTab === tab) return
 
-    if (tab === "deck" && nextTab !== "deck" && deckDirty) {
+    if (tab === "deck" && nextTab !== "deck" && hasAnyDeckDraftChanges) {
       setPendingTabSwitch(nextTab)
       setShowUnsavedDeckDialog(true)
       return
     }
 
     setTab(nextTab)
-  }, [battleLocked, deckDirty, tab])
+  }, [battleLocked, hasAnyDeckDraftChanges, tab])
 
   const handleSelectDeckSlot = useCallback((nextSlot: DeckSlotKey) => {
     if (nextSlot === selectedDeckSlot) return
@@ -468,7 +501,7 @@ export default function MewBattlePage() {
     setShowUnsavedDeckDialog(false)
     setPendingTabSwitch(null)
     setDeckDirty(false)
-    setDeckDraft(null)
+    setDeckDrafts({})
     if (nextTab) setTab(nextTab)
   }, [pendingTabSwitch])
 
@@ -478,7 +511,7 @@ export default function MewBattlePage() {
       setShowUnsavedDeckDialog(false)
       return
     }
-    if (!deckDraft || !userId) {
+    if (!userId || !hasAnyDeckDraftChanges) {
       setShowUnsavedDeckDialog(false)
       setPendingTabSwitch(null)
       return
@@ -486,9 +519,25 @@ export default function MewBattlePage() {
 
     setSavingUnsavedDeck(true)
     try {
-      await handleSaveDeck(deckDraft.name, deckDraft.cardIds)
+      for (const slot of DECK_SLOT_KEYS) {
+        const draft = deckDrafts[slot]
+        if (!draft) continue
+
+        const savedDeck = decksBySlot.get(slot)
+        const savedName = (savedDeck?.deckName ?? getDefaultDeckName(slot)).trim()
+        const savedCardIds = savedDeck?.cards ?? []
+        const nameChanged = draft.name.trim() !== savedName
+        const cardsChanged = draft.cardIds.length !== savedCardIds.length
+          || draft.cardIds.some((cardId, index) => cardId !== savedCardIds[index])
+
+        if (!nameChanged && !cardsChanged) continue
+        await saveDeckForSlot(slot, draft.name, draft.cardIds)
+      }
+
+      await loadData()
+      setMessage(t.deckSaved)
       setDeckDirty(false)
-      setDeckDraft(null)
+      setDeckDrafts({})
       setShowUnsavedDeckDialog(false)
       setPendingTabSwitch(null)
       if (nextTab) setTab(nextTab)
@@ -497,7 +546,7 @@ export default function MewBattlePage() {
     } finally {
       setSavingUnsavedDeck(false)
     }
-  }, [deckDraft, handleSaveDeck, pendingTabSwitch, userId])
+  }, [deckDrafts, decksBySlot, hasAnyDeckDraftChanges, loadData, pendingTabSwitch, saveDeckForSlot, t.deckSaved, userId])
 
   const handleOpenBooster = useCallback(async (offerId: BoosterOffer["id"]) => {
     if (!userId) {
@@ -602,13 +651,22 @@ export default function MewBattlePage() {
 
   const selectedDeckCardIds = useMemo(() => selectedDeckCards.map((card) => card.id), [selectedDeckCards])
 
-  const handleDeckDraftChange = useCallback((name: string, cardIds: string[]) => {
-    setDeckDraft((prev) => {
-      if (!prev) return { name, cardIds }
-      if (prev.name !== name) return { name, cardIds }
-      if (prev.cardIds.length !== cardIds.length) return { name, cardIds }
+  const handleDeckDraftChange = useCallback((slot: DeckSlotKey, name: string, cardIds: string[]) => {
+    setDeckDrafts((prev) => {
+      const currentDraft = prev[slot]
+      if (!currentDraft) {
+        return { ...prev, [slot]: { name, cardIds } }
+      }
+      if (currentDraft.name !== name) {
+        return { ...prev, [slot]: { name, cardIds } }
+      }
+      if (currentDraft.cardIds.length !== cardIds.length) {
+        return { ...prev, [slot]: { name, cardIds } }
+      }
       for (let i = 0; i < cardIds.length; i += 1) {
-        if (prev.cardIds[i] !== cardIds[i]) return { name, cardIds }
+        if (currentDraft.cardIds[i] !== cardIds[i]) {
+          return { ...prev, [slot]: { name, cardIds } }
+        }
       }
       return prev
     })
@@ -626,15 +684,6 @@ export default function MewBattlePage() {
       return sum + getCardSellPrice(card) * userCard.quantity
     }, 0)
   }, [cardsById, userCards])
-
-  const decksBySlot = useMemo(() => {
-    const map = new Map<DeckSlotKey, Deck>()
-    for (const deck of decks) {
-      if (!deck.slot) continue
-      map.set(deck.slot, deck)
-    }
-    return map
-  }, [decks])
 
   const battleDeckCardsBySlot = useMemo(() => {
     const result = new Map<DeckSlotKey, MewCard[]>()
@@ -993,12 +1042,6 @@ export default function MewBattlePage() {
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                {userId && (
-                  <DropdownMenuItem onSelect={() => { void loadLeaderboard(); setShowLeaderboard(true) }}>
-                    <Trophy className="h-4 w-4" />
-                    {t.leaderboard}
-                  </DropdownMenuItem>
-                )}
                 {profile && (
                   <DropdownMenuItem onSelect={() => setShowBattleStatsDialog(true)}>
                     <TrendingUp className="h-4 w-4" />
@@ -1079,21 +1122,39 @@ export default function MewBattlePage() {
           {tabs.map((item) => {
             const Icon = item.icon
             return (
-              <Button
-                key={item.key}
-                variant={tab === item.key ? "default" : "outline"}
-                size="sm"
-                onClick={() => {
-                  void handleTabChange(item.key)
-                }}
-                disabled={battleLocked && item.key !== "battle"}
-                className={`rounded-full px-2.5 h-8 gap-1.5 ${tab === item.key ? "" : item.tone}`}
-              >
-                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-black/10">
-                  <Icon className="h-3.5 w-3.5" />
-                </span>
-                <span className="text-xs">{item.label}</span>
-              </Button>
+              <Fragment key={item.key}>
+                <Button
+                  variant={tab === item.key ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    void handleTabChange(item.key)
+                  }}
+                  disabled={battleLocked && item.key !== "battle"}
+                  className={`rounded-full px-2.5 h-8 gap-1.5 ${tab === item.key ? "" : item.tone}`}
+                >
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-black/10">
+                    <Icon className="h-3.5 w-3.5" />
+                  </span>
+                  <span className="text-xs">{item.label}</span>
+                </Button>
+                {item.key === "battle" && userId && (
+                  <Button
+                    key="leaderboard-tile"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      void loadLeaderboard()
+                      setShowLeaderboard(true)
+                    }}
+                    className="rounded-full px-2.5 h-8 gap-1.5 bg-amber-500/15 text-amber-100 border-amber-500/35"
+                  >
+                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-black/10">
+                      <Trophy className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="text-xs">{t.leaderboard}</span>
+                  </Button>
+                )}
+              </Fragment>
             )
           })}
         </div>
@@ -1122,12 +1183,14 @@ export default function MewBattlePage() {
                 maxDeckSize={profile?.maxDeckSize ?? 3}
                 deckButtons={DECK_SLOT_KEYS.map((slot) => ({
                   slot,
-                  label: decksBySlot.get(slot)?.deckName ?? getDefaultDeckName(slot),
+                  label: deckDrafts[slot]?.name ?? decksBySlot.get(slot)?.deckName ?? getDefaultDeckName(slot),
                   ...(deckMetricsBySlot.get(slot) ?? { totalHp: 0, avgAttack: 0, totalValue: 0, potentialReward: 0 }),
                 }))}
                 selectedDeckSlot={selectedDeckSlot}
-                initialDeckName={selectedDeck?.deckName ?? getDefaultDeckName(selectedDeckSlot)}
-                initialDeckCardIds={selectedDeckCardIds}
+                initialDeckName={selectedDeckDraft?.name ?? selectedDeck?.deckName ?? getDefaultDeckName(selectedDeckSlot)}
+                initialDeckCardIds={selectedDeckDraft?.cardIds ?? selectedDeckCardIds}
+                savedDeckName={selectedDeck?.deckName ?? getDefaultDeckName(selectedDeckSlot)}
+                savedDeckCardIds={selectedDeck?.cards ?? []}
                 onSelectDeckSlot={handleSelectDeckSlot}
                 onSaveDeck={handleSaveDeck}
                 onDraftChange={handleDeckDraftChange}
